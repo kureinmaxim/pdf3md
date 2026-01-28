@@ -63,3 +63,57 @@ npm run dev
 ```
 
 > ⚠️ Note: Background processes will need to be stopped manually via Task Manager or `Stop-Process`.
+
+---
+
+# Running PDF3MD on macOS/Linux (Bash)
+
+## Quick Start
+
+Open **two terminals** and run the following commands:
+
+### Terminal 1 — Backend Server
+
+```bash
+cd pdf3md/pdf3md
+# Ensure your virtual environment is activated
+# source ../../.venv/bin/activate
+python3 app.py
+```
+
+Expected output:
+```
+INFO:__main__:Starting Flask server...
+ * Running on http://127.0.0.1:6201
+```
+
+### Terminal 2 — Frontend Server
+
+```bash
+cd pdf3md/pdf3md
+npm run dev
+```
+
+Expected output:
+```
+VITE v6.0.6  ready in 217 ms
+
+➜  Local:   http://localhost:5173/
+```
+
+---
+
+## One-Liner (Background Mode)
+
+To run both servers in background mode (single terminal):
+
+```bash
+cd pdf3md/pdf3md
+
+# Start backend in background using the virtual environment
+../.venv/bin/python3 app.py &
+
+# Start frontend
+npm run dev
+```
+

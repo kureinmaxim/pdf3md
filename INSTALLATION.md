@@ -131,6 +131,10 @@ pandoc --version
 git clone https://github.com/murtaza-nasir/pdf3md.git
 cd pdf3md
 
+# Setup Python Virtual Environment (Recommended to avoid externally-managed-environment errors)
+python3 -m venv .venv
+source .venv/bin/activate
+
 # Install Python dependencies
 pip3 install -r pdf3md/requirements.txt
 
@@ -144,6 +148,8 @@ npm install
 **Terminal 1 — Backend:**
 ```bash
 cd pdf3md/pdf3md
+# Ensure your virtual environment is activated
+# source ../../.venv/bin/activate
 python3 app.py
 ```
 

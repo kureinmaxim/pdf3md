@@ -132,6 +132,10 @@ This is for running the frontend and backend services directly on your machine w
     Navigate to the application's backend directory and install dependencies:
     ```bash
     cd pdf3md # If you are in the root of the cloned repo, cd into pdf3md
+    # Recommended: Set up a virtual environment
+    python3 -m venv .venv
+    source .venv/bin/activate
+    
     pip install -r requirements.txt
     python app.py
     ```
