@@ -1,14 +1,19 @@
 # Running PDF3MD on Windows (PowerShell)
 
-## Quick Start
+Repo layout: backend at `pdf3md/app.py`, frontend in `pdf3md/`.
+
+## Quick Start (Development)
 
 Open **two PowerShell terminals** and run the following commands:
 
 ### Terminal 1 — Backend Server
 
 ```powershell
-cd c:\Project\pdf3md\pdf3md
-py app.py
+cd C:\Project\pdf3md
+py -m venv venv
+venv\Scripts\activate
+py -m pip install -r requirements.txt
+py pdf3md\app.py
 ```
 
 Expected output:
@@ -20,7 +25,8 @@ INFO:__main__:Starting Flask server...
 ### Terminal 2 — Frontend Server
 
 ```powershell
-cd c:\Project\pdf3md\pdf3md
+cd C:\Project\pdf3md\pdf3md
+npm install
 npm run dev
 ```
 
@@ -53,10 +59,10 @@ Press `Ctrl+C` in each terminal to stop the servers.
 To run both servers in background mode (single terminal):
 
 ```powershell
-cd c:\Project\pdf3md\pdf3md
+cd C:\Project\pdf3md\pdf3md
 
 # Start backend in background
-Start-Process -NoNewWindow py -ArgumentList "app.py"
+Start-Process -NoNewWindow ..\venv\Scripts\python.exe -ArgumentList "app.py"
 
 # Start frontend
 npm run dev
@@ -68,17 +74,18 @@ npm run dev
 
 # Running PDF3MD on macOS/Linux (Bash)
 
-## Quick Start
+## Quick Start (Development)
 
 Open **two terminals** and run the following commands:
 
 ### Terminal 1 — Backend Server
 
 ```bash
-cd pdf3md/pdf3md
-# Ensure your virtual environment is activated
-# source ../../.venv/bin/activate
-python3 app.py
+cd /Users/olgazaharova/Project/pdf3md
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python3 pdf3md/app.py
 ```
 
 Expected output:
@@ -90,7 +97,8 @@ INFO:__main__:Starting Flask server...
 ### Terminal 2 — Frontend Server
 
 ```bash
-cd pdf3md/pdf3md
+cd /Users/olgazaharova/Project/pdf3md/pdf3md
+npm install
 npm run dev
 ```
 
@@ -108,12 +116,63 @@ VITE v6.0.6  ready in 217 ms
 To run both servers in background mode (single terminal):
 
 ```bash
-cd pdf3md/pdf3md
+cd /Users/olgazaharova/Project/pdf3md/pdf3md
 
 # Start backend in background using the virtual environment
-../.venv/bin/python3 app.py &
+../venv/bin/python3 app.py &
 
 # Start frontend
 npm run dev
+
+---
+
+# Production Mode (Single Server)
+
+Build the frontend once and serve it from Flask:
+
+```bash
+cd /Users/olgazaharova/Project/pdf3md
+npm install
+npm run build
 ```
+
+Then run the backend:
+
+**Windows (PowerShell):**
+```powershell
+cd C:\Project\pdf3md
+venv\Scripts\activate
+py pdf3md\app.py
+```
+
+**macOS/Linux (Bash):**
+```bash
+cd /Users/olgazaharova/Project/pdf3md
+source venv/bin/activate
+python3 pdf3md/app.py
+```
+
+Open: http://localhost:6201
+
+---
+
+# macOS App (DMG)
+
+If you want a native macOS app that runs without a preinstalled Python/Node:
+
+```bash
+cd /Users/olgazaharova/Project/pdf3md
+./macos/build_dmg.sh
+```
+
+Open the DMG and drag `PDF3MD.app` to Applications.  
+Launch the app to open `http://localhost:6201`.
+```
+
+---
+
+# Windows Installer (Inno Setup)
+
+If you want an installer on Windows, use Inno Setup with `windows/installer.iss` and set the default install path to:
+`C:\Project\pdf3md`.
 

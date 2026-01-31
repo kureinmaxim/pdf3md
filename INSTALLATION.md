@@ -8,9 +8,9 @@ This guide covers installation on **Windows** and **macOS** without Docker.
 
 | Component | Windows | macOS |
 |-----------|---------|-------|
-| **Python** | 3.11+ | 3.11+ |
+| **Python** | 3.13+ | 3.13+ |
 | **Node.js** | 18+ | 18+ |
-| **Pandoc** | Required | Required |
+| **Pandoc** | Required (MD → DOCX) | Required (MD → DOCX) |
 
 ---
 
@@ -50,14 +50,16 @@ pandoc --version
 
 ```powershell
 # Clone the repository
-git clone https://github.com/murtaza-nasir/pdf3md.git
-cd pdf3md
+git clone https://github.com/kureinmaxim/pdf3md.git
+cd C:\Project\pdf3md
+
+# Repo layout: backend at pdf3md/app.py, frontend in pdf3md/
 
 # Install Python dependencies
-py -m pip install -r pdf3md/requirements.txt
+py -m pip install -r requirements.txt
 
 # Install Node.js dependencies
-cd pdf3md
+cd C:\Project\pdf3md\pdf3md
 npm install
 ```
 
@@ -65,20 +67,21 @@ npm install
 
 **Terminal 1 — Backend:**
 ```powershell
-cd pdf3md\pdf3md
+cd C:\Project\pdf3md\pdf3md
 py app.py
 ```
 
 **Terminal 2 — Frontend:**
 ```powershell
-cd pdf3md\pdf3md
+cd C:\Project\pdf3md\pdf3md
 npm run dev
 ```
 
 ### 6. Access the Application
 
-- **Frontend**: http://localhost:5173
+- **Frontend (dev)**: http://localhost:5173
 - **Backend API**: http://localhost:6201
+- **Production UI**: http://localhost:6201 (after `npm run build`)
 
 ---
 
@@ -93,7 +96,7 @@ npm run dev
 ### 2. Install Python
 
 ```bash
-brew install python@3.11
+brew install python@3.13
 ```
 
 Verify:
@@ -128,18 +131,20 @@ pandoc --version
 
 ```bash
 # Clone the repository
-git clone https://github.com/murtaza-nasir/pdf3md.git
-cd pdf3md
+git clone https://github.com/kureinmaxim/pdf3md.git
+cd /Users/olgazaharova/Project/pdf3md
 
-# Setup Python Virtual Environment (Recommended to avoid externally-managed-environment errors)
-python3 -m venv .venv
-source .venv/bin/activate
+# Repo layout: backend at pdf3md/app.py, frontend in pdf3md/
+
+# Setup Python Virtual Environment
+python3 -m venv venv
+source venv/bin/activate
 
 # Install Python dependencies
-pip3 install -r pdf3md/requirements.txt
+pip3 install -r requirements.txt
 
 # Install Node.js dependencies
-cd pdf3md
+cd /Users/olgazaharova/Project/pdf3md/pdf3md
 npm install
 ```
 
@@ -147,35 +152,36 @@ npm install
 
 **Terminal 1 — Backend:**
 ```bash
-cd pdf3md/pdf3md
+cd /Users/olgazaharova/Project/pdf3md/pdf3md
 # Ensure your virtual environment is activated
-# source ../../.venv/bin/activate
+# source ../../venv/bin/activate
 python3 app.py
 ```
 
 **Terminal 2 — Frontend:**
 ```bash
-cd pdf3md/pdf3md
+cd /Users/olgazaharova/Project/pdf3md/pdf3md
 npm run dev
 ```
 
 ### 7. Access the Application
 
-- **Frontend**: http://localhost:5173
+- **Frontend (dev)**: http://localhost:5173
 - **Backend API**: http://localhost:6201
+- **Production UI**: http://localhost:6201 (after `npm run build`)
 
 ---
 
-## Production Build (Optional)
+## Production Build (No Dev Server)
 
-To create a production build of the frontend:
+To run production locally:
 
 ```bash
-cd pdf3md/pdf3md
+cd /Users/olgazaharova/Project/pdf3md
 npm run build
 ```
 
-The optimized files will be in the `dist/` folder. You can serve them with any static file server.
+Then keep the backend running and open: `http://localhost:6201`
 
 ---
 
@@ -210,3 +216,26 @@ If ports 5173 or 6201 are in use, stop other applications using them or modify t
 ## Docker Installation (Alternative)
 
 For Docker-based installation, see the main [README.md](README.md).
+
+---
+
+## macOS App (DMG)
+
+If you want a native macOS app that runs without a preinstalled Python/Node:
+
+```bash
+cd /Users/olgazaharova/Project/pdf3md
+./macos/build_dmg.sh
+```
+
+Open the DMG and drag `PDF3MD.app` to Applications.  
+Launch the app to open `http://localhost:6201`.
+
+> Note: Pandoc is still required for Markdown → DOCX conversion.
+
+---
+
+## Windows Installer (Inno Setup)
+
+If you want a Windows installer, use Inno Setup with `windows/installer.iss` and set the default install path to:
+`C:\Project\pdf3md`.

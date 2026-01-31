@@ -48,7 +48,7 @@ Get PDF3MD running in under 2 minutes!
           default:
             name: pdf3md-network
         ```
-    *   **`docker-start.sh`**: Download the `docker-start.sh` script from the [pdf3md GitHub repository's main branch](https://github.com/murtaza-nasir/pdf3md/blob/main/docker-start.sh) and place it in the same directory.
+    *   **`docker-start.sh`**: Download the `docker-start.sh` script from your fork: `https://github.com/kureinmaxim/pdf3md/blob/main/docker-start.sh` and place it in the same directory.
     *   Make the script executable: `chmod +x ./docker-start.sh`
 
 2.  **Start the Application**:
@@ -81,7 +81,7 @@ Get PDF3MD running in under 2 minutes!
 This mode is for making code changes and requires cloning the full repository.
 1.  **Clone the Repository**:
     ```bash
-    git clone https://github.com/murtaza-nasir/pdf3md.git
+    git clone https://github.com/kureinmaxim/pdf3md.git
     cd pdf3md
     ```
     The `docker-compose.dev.yml` file will be included in the clone.
@@ -119,38 +119,70 @@ This mode is for making code changes and requires cloning the full repository.
 
 This is for running the frontend and backend services directly on your machine without Docker, primarily for development.
 
-**Prerequisites**: Python 3.8+, Node.js 16+, and Git.
+**Prerequisites**: Python 3.13+, Node.js 18+, Pandoc, and Git.
+Repo layout: backend at `pdf3md/app.py`, frontend in `pdf3md/`.
 
 1.  **Clone the Repository**:
     First, clone the repository to get the source code:
     ```bash
-    git clone https://github.com/murtaza-nasir/pdf3md.git
-    cd pdf3md 
+    git clone https://github.com/kureinmaxim/pdf3md.git
+    cd /Users/olgazaharova/Project/pdf3md  # macOS/Linux
+    # Windows: cd C:\Project\pdf3md
     ```
 
 2.  **Set up Backend (Terminal 1)**:
-    Navigate to the application's backend directory and install dependencies:
+    Create a virtual environment and install dependencies:
     ```bash
-    cd pdf3md # If you are in the root of the cloned repo, cd into pdf3md
-    # Recommended: Set up a virtual environment
-    python3 -m venv .venv
-    source .venv/bin/activate
-    
+    python3 -m venv venv
+    source venv/bin/activate
     pip install -r requirements.txt
-    python app.py
+    python3 pdf3md/app.py
     ```
 
 3.  **Set up Frontend (Terminal 2)**:
-    In a new terminal, navigate to the same application directory for the frontend:
+    In a new terminal:
     ```bash
-    cd path/to/your/cloned/pdf3md/pdf3md # Adjust path as necessary
+    cd /Users/olgazaharova/Project/pdf3md/pdf3md  # macOS/Linux
+    # Windows: cd C:\Project\pdf3md\pdf3md
     npm install
     npm run dev
     ```
 
 4.  **Open Browser**:
-    *   Frontend: `http://localhost:5173`
+    *   Dev Frontend: `http://localhost:5173`
     *   Backend API: `http://localhost:6201`
+
+### Production (No Dev Server)
+If you want to run production mode locally:
+
+```bash
+cd /Users/olgazaharova/Project/pdf3md  # macOS/Linux
+# Windows: cd C:\Project\pdf3md
+npm install
+npm run build
+```
+
+Then keep the backend running and open: `http://localhost:6201`
+
+## Option 3: macOS App (DMG)
+
+If you want a native macOS app that runs without a preinstalled Python/Node:
+
+```bash
+cd /Users/olgazaharova/Project/pdf3md  # macOS/Linux
+# Windows: cd C:\Project\pdf3md
+./macos/build_dmg.sh
+```
+
+Open the DMG and drag `PDF3MD.app` to Applications.  
+Launch the app to open `http://localhost:6201`.
+
+> Note: Pandoc is still required for Markdown → DOCX conversion.
+
+## Option 4: Windows Installer (Inno Setup)
+
+If you want a Windows installer, use Inno Setup with `windows/installer.iss` and set the default install path to:
+`C:\Project\pdf3md`.
 ```
 
 ## Using the App

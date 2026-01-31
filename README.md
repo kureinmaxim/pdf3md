@@ -1,8 +1,8 @@
 # PDF to Markdown and Word Converter
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Docker Build Backend](https://github.com/murtaza-nasir/pdf3md/actions/workflows/build-backend-image.yml/badge.svg)](https://github.com/murtaza-nasir/pdf3md/actions/workflows/build-backend-image.yml)
-[![Docker Build Frontend](https://github.com/murtaza-nasir/pdf3md/actions/workflows/build-frontend-image.yml/badge.svg)](https://github.com/murtaza-nasir/pdf3md/actions/workflows/build-frontend-image.yml)
+[![Docker Build Backend](https://github.com/kureinmaxim/pdf3md/actions/workflows/build-backend-image.yml/badge.svg)](https://github.com/kureinmaxim/pdf3md/actions/workflows/build-backend-image.yml)
+[![Docker Build Frontend](https://github.com/kureinmaxim/pdf3md/actions/workflows/build-frontend-image.yml/badge.svg)](https://github.com/kureinmaxim/pdf3md/actions/workflows/build-frontend-image.yml)
 
 This project is dual-licensed. Please see the [License](#license) section for comprehensive details.
 
@@ -85,7 +85,7 @@ This method uses pre-built Docker images from Docker Hub for quick setup. You'll
           default:
             name: pdf3md-network
         ```
-    *   **`docker-start.sh`**: Download the `docker-start.sh` script from the [pdf3md GitHub repository's main branch](https://github.com/murtaza-nasir/pdf3md/blob/main/docker-start.sh) and place it in the same directory.
+    *   **`docker-start.sh`**: Download the `docker-start.sh` script from your fork: `https://github.com/kureinmaxim/pdf3md/blob/main/docker-start.sh` and place it in the same directory.
     *   Make the script executable: `chmod +x ./docker-start.sh`
     *   (Optional) For development mode using local source code (which requires cloning the full repository), you would also need `docker-compose.dev.yml` from the repository.
 
@@ -147,8 +147,9 @@ This setup is for developing the application locally, not using pre-built images
 
 1.  **Clone the Repository**:
     ```bash
-    git clone https://github.com/murtaza-nasir/pdf3md.git
-    cd pdf3md
+    git clone https://github.com/kureinmaxim/pdf3md.git
+    cd /Users/olgazaharova/Project/pdf3md  # macOS/Linux
+    # Windows: cd C:\Project\pdf3md
     ```
 2.  **Start Services**:
     Use the `docker-compose.dev.yml` file, which is typically configured to build images locally and mount source code.
@@ -165,35 +166,77 @@ This setup is for developing the application locally, not using pre-built images
 
 ### Manual Setup (Running without Docker)
 
-This method involves running the frontend and backend services directly on your machine without Docker, typically for development or if you prefer not to use Docker.
+This method involves running the frontend and backend services directly on your machine without Docker.  
+Pandoc is required for Markdown → DOCX conversion.
+Repository layout: `pdf3md/app.py` is the backend, `pdf3md/` folder also contains the frontend.
 
 1.  **Clone the Repository**:
     If you haven't already, clone the repository to get the source code:
     ```bash
-    git clone https://github.com/murtaza-nasir/pdf3md.git
+    git clone https://github.com/kureinmaxim/pdf3md.git
     cd pdf3md
     ```
 
 #### Backend (Flask)
 
-1.  Navigate to the `pdf3md` sub-directory (if you are in the root of the cloned repo): `cd pdf3md`
-2.  Install Python dependencies: `pip install -r requirements.txt`
-3.  Start the backend server: `python app.py`
+1.  Create and activate a virtual environment (recommended):
+    ```bash
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
+2.  Install Python dependencies (from repo root):
+    ```bash
+    pip install -r requirements.txt
+    ```
+3.  Start the backend server:
+    ```bash
+    python3 pdf3md/app.py
+    ```
     (The backend will be available at `http://localhost:6201`)
 
 #### Frontend (React)
 
-1.  In a new terminal, navigate to the `pdf3md` sub-directory (if you are in the root of the cloned repo): `cd pdf3md`
-2.  Install Node.js dependencies: `npm install`
-3.  Start the frontend development server: `npm run dev`
-    (The frontend will be available at `http://localhost:5173`)
+1.  Install Node.js dependencies:
+    ```bash
+    cd /Users/olgazaharova/Project/pdf3md  # macOS/Linux
+    # Windows: cd C:\Project\pdf3md
+    npm install
+    ```
+2.  **Development mode** (hot reload):
+    ```bash
+    npm run dev
+    ```
+    (Frontend at `http://localhost:5173`)
+3.  **Production mode** (no dev server):
+    ```bash
+    npm run build
+    ```
+    Then keep the backend running and open: `http://localhost:6201`
 
-#### Convenience Scripts
+#### Convenience Scripts (Legacy)
 
-The `pdf3md` sub-directory contains scripts for managing both services:
--   `./start_server.sh`: Starts both frontend and backend.
--   `./stop_server.sh`: Stops both services.
-    (Ensure these scripts are executable: `chmod +x ./start_server.sh ./stop_server.sh`)
+The `pdf3md` sub-directory contains legacy scripts:
+-   `./start_server.sh` / `./stop_server.sh` (may require conda and are not used for production mode)
+
+### macOS App (DMG)
+
+If you want a native macOS app that runs without a preinstalled Python/Node:
+
+1. Build the DMG:
+   ```bash
+   cd /Users/olgazaharova/Project/pdf3md  # macOS/Linux
+   # Windows: cd C:\Project\pdf3md
+   ./macos/build_dmg.sh
+   ```
+2. Open the DMG and drag `PDF3MD.app` to Applications.
+3. Launch the app — it opens `http://localhost:6201`.
+
+> Note: Pandoc is still required for Markdown → DOCX conversion.
+
+### Windows Installer (Inno Setup)
+
+If you want a Windows installer, use Inno Setup with `windows/installer.iss` and set the default install path to:
+`C:\Project\pdf3md`.
 
 ## Usage Instructions
 
@@ -254,8 +297,8 @@ location /api/ {
 
 **Key considerations for your reverse proxy setup:**
 
-*   **Frontend Root:** Your reverse proxy should serve the frontend application (from port `3000`) at the root of your domain (e.g., `http://pdf3md.local/`).
-*   **API Path:** The frontend will make requests to `http://pdf3md.local/api/...`. Your proxy needs to strip `/api` from the path before forwarding to the backend if the backend doesn't expect `/api` in its routes (which is the case for PDF3MD by default). The `proxy_pass http://<backend_host>:6201/;` (with a trailing slash) typically handles this correctly in Nginx.
+*   **Frontend Root:** Your reverse proxy should serve the frontend application at the root of your domain (e.g., `http://pdf3md.local/`).
+*   **API Path:** For production builds served by Flask, the frontend calls the same origin. For dev builds, the frontend calls `/api` on the same domain. Adjust your proxy accordingly.
 *   **WebSocket Support:** Not currently used by PDF3MD, but if future features require WebSockets, ensure your proxy is configured to handle them.
 *   **SSL/TLS Termination:** It's highly recommended to configure SSL/TLS termination at your reverse proxy.
 *   **CORS:** The backend is configured with permissive CORS headers (`Access-Control-Allow-Origin: *`). In most reverse proxy setups where the frontend and API are served under the same domain, CORS issues should not arise. However, if you encounter them, ensure your proxy isn't stripping or altering necessary CORS headers.

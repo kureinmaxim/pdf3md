@@ -140,6 +140,12 @@ function App() {
   const getBackendUrl = () => {
     const hostname = window.location.hostname;
     const protocol = window.location.protocol;
+    const port = window.location.port;
+
+    if (import.meta.env.PROD) {
+      const portPart = port ? `:${port}` : '';
+      return `${protocol}//${hostname}${portPart}`;
+    }
 
     if (hostname === 'localhost') {
       // Scenario 1: Localhost development (e.g., http://localhost:3000)
