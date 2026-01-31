@@ -25,6 +25,10 @@ function App() {
   const [mode, setMode] = useState('pdf-to-md') // 'pdf-to-md' or 'md-to-word'
   const [markdownInput, setMarkdownInput] = useState('')
   const [isConverting, setIsConverting] = useState(false)
+  const [versionInfo, setVersionInfo] = useState(null)
+  const [showAbout, setShowAbout] = useState(false)
+  const showGitMeta = !import.meta.env.PROD
+  const showBuildTime = !import.meta.env.PROD
   const fileInputRef = useRef(null)
   const isInitialMount = useRef(true); // Ref to track initial mount
   const activeConversionId = useRef(null); // Tracks the current conversion ID for polling
@@ -160,6 +164,21 @@ function App() {
       return `${protocol}//${hostname}/api`;
     }
   };
+
+  useEffect(() => {
+    const fetchVersionInfo = async () => {
+      try {
+        const response = await fetch(`${getBackendUrl()}/version`);
+        if (!response.ok) return;
+        const data = await response.json();
+        setVersionInfo(data);
+      } catch (error) {
+        console.warn('Failed to load version info:', error);
+      }
+    };
+
+    fetchVersionInfo();
+  }, []);
 
   const pollProgress = async (conversionId, fileName) => {
     activeConversionId.current = conversionId;
@@ -835,9 +854,58 @@ function App() {
               </div>
             )}
           </div>
+          {versionInfo && (
+            <>
+              <div className="footer-actions">
+                <button
+                  className="about-button"
+                  onClick={() => setShowAbout(true)}
+                >
+                  About
+                </button>
+              </div>
+              <div className="app-footer">
+                <span>
+                  Version {versionInfo.version} • Release date {versionInfo.release_date} • Developer {versionInfo.developer}
+                  {showGitMeta && versionInfo.git_commit && (
+                    <> • Commit {versionInfo.git_commit}{versionInfo.git_dirty ? " (dirty)" : ""}</>
+                  )}
+                  {showBuildTime && versionInfo.generated_at && (
+                    <> • Built {versionInfo.generated_at}</>
+                  )}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
+    {showAbout && versionInfo && (
+      <div className="about-overlay" onClick={() => setShowAbout(false)}>
+        <div className="about-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="about-header">
+            <h3>About PDF3MD</h3>
+            <button className="about-close" onClick={() => setShowAbout(false)}>×</button>
+          </div>
+          <div className="about-content">
+            <div className="about-row"><span>Version</span><span>{versionInfo.version}</span></div>
+            <div className="about-row"><span>Release date</span><span>{versionInfo.release_date}</span></div>
+            <div className="about-row"><span>Developer</span><span>{versionInfo.developer}</span></div>
+            {showGitMeta && (
+              <>
+                <div className="about-row"><span>Git commit</span><span>{versionInfo.git_commit || "unknown"}</span></div>
+                <div className="about-row"><span>Git branch</span><span>{versionInfo.git_branch || "unknown"}</span></div>
+                <div className="about-row"><span>Git describe</span><span>{versionInfo.git_describe || "unknown"}</span></div>
+                <div className="about-row"><span>Dirty</span><span>{String(versionInfo.git_dirty)}</span></div>
+              </>
+            )}
+            {showBuildTime && (
+              <div className="about-row"><span>Build time</span><span>{versionInfo.generated_at}</span></div>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
   )
 }
 

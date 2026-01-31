@@ -36,5 +36,8 @@ Write-Host "Building frontend..."
 npm run build
 Pop-Location
 
+Write-Host "Generating build metadata..."
+& $pythonExe (Join-Path $appRoot "scripts\build_meta.py")
+
 Write-Host "Starting app..."
 & "$PSScriptRoot\start_app.ps1"

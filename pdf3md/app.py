@@ -16,6 +16,9 @@ from io import StringIO, BytesIO
 import re
 import pypandoc
 import traceback 
+import subprocess
+import signal
+import tomllib
 from docx import Document
 from docx.shared import Pt, Inches, Emu
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -100,6 +103,60 @@ def after_request(response):
 
 # Store conversion progress
 conversion_progress = {}
+
+def _load_version_meta():
+    version = "0.0.0"
+    release_date = "unknown"
+    developer = "unknown"
+
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    pyproject_path = os.path.join(project_root, "pyproject.toml")
+    if os.path.exists(pyproject_path):
+        try:
+            with open(pyproject_path, "rb") as f:
+                data = tomllib.load(f)
+            version = data.get("project", {}).get("version", version)
+            tool = data.get("tool", {}).get("pdf3md", {})
+            release_date = tool.get("release_date", release_date)
+            developer = tool.get("developer", developer)
+            return version, release_date, developer
+        except Exception:
+            pass
+
+    build_meta = os.path.join(os.path.dirname(__file__), "build_meta.json")
+    if os.path.exists(build_meta):
+        try:
+            with open(build_meta, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+            version = payload.get("version", version)
+            release_date = payload.get("release_date", release_date)
+            developer = payload.get("developer", developer)
+            return version, release_date, developer
+        except Exception:
+            pass
+
+    version_json = os.path.join(os.path.dirname(__file__), "version.json")
+    if os.path.exists(version_json):
+        try:
+            with open(version_json, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+            version = payload.get("version", version)
+            release_date = payload.get("release_date", release_date)
+            developer = payload.get("developer", developer)
+        except Exception:
+            pass
+
+    return version, release_date, developer
+
+def _get_git_info():
+    try:
+        commit = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
+        branch = subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True).strip()
+        dirty = subprocess.check_output(["git", "status", "--porcelain"], text=True).strip() != ""
+        describe = subprocess.check_output(["git", "describe", "--tags", "--always"], text=True).strip()
+        return commit, branch, dirty, describe
+    except Exception:
+        return None, None, None, None
 
 class ProgressCapture:
     """Capture progress output from pymupdf4llm"""
@@ -323,6 +380,7 @@ def markdown_to_docx(markdown_text, filename="document"):
     """Convert markdown text to a Word document using Pandoc."""
     temp_docx_path = None
     try:
+        _ensure_pandoc_available()
         # pypandoc.ensure_pandoc_installed() # Optional
 
         # Generate a unique temporary filename for the DOCX output
@@ -384,6 +442,34 @@ def _apply_docx_formatting(docx_path):
     _format_tables(doc)
 
     doc.save(docx_path)
+
+def _ensure_pandoc_available():
+    if os.environ.get("PDF3MD_SKIP_PANDOC_DOWNLOAD", "0") == "1":
+        return
+
+    pandoc_env = os.environ.get("PYPANDOC_PANDOC")
+    if pandoc_env and os.path.exists(pandoc_env):
+        return
+
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        bundled = os.path.join(sys._MEIPASS, "pandoc", "pandoc")
+        if os.path.exists(bundled):
+            os.environ["PYPANDOC_PANDOC"] = bundled
+            return
+
+    app_support = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "PDF3MD", "pandoc")
+    pandoc_path = os.path.join(app_support, "pandoc")
+    if os.path.exists(pandoc_path):
+        os.environ["PYPANDOC_PANDOC"] = pandoc_path
+        return
+
+    os.makedirs(app_support, exist_ok=True)
+    try:
+        pypandoc.download_pandoc(targetfolder=app_support)
+        if os.path.exists(pandoc_path):
+            os.environ["PYPANDOC_PANDOC"] = pandoc_path
+    except Exception as e:
+        logger.error(f"Failed to download pandoc: {e}")
 
 def _remove_leading_metadata(doc):
     paragraphs = list(doc.paragraphs)
@@ -827,9 +913,25 @@ def convert_markdown_to_word():
         logger.error(traceback.format_exc())
         return jsonify({'error': f'Conversion error: {str(e)}'}), 500
 
+@app.route('/version', methods=['GET'])
+def get_version_info():
+    version, release_date, developer = _load_version_meta()
+    commit, branch, dirty, describe = _get_git_info()
+    return jsonify({
+        "version": version,
+        "release_date": release_date,
+        "developer": developer,
+        "git_commit": commit,
+        "git_describe": describe,
+        "git_branch": branch,
+        "git_dirty": dirty,
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+    })
+
 def convert_docx_to_markdown_sync(docx_path, original_filename):
     """Convert DOCX file to markdown text using Pandoc."""
     try:
+        _ensure_pandoc_available()
         logger.debug(f"Attempting to convert DOCX to markdown for filename: {original_filename} using pandoc from path: {docx_path}")
         
         # pypandoc.ensure_pandoc_installed() # Optional, useful for debugging
@@ -931,5 +1033,46 @@ def serve_frontend(path):
     return jsonify({'error': 'Frontend build not found. Run npm run build.'}), 404
 
 if __name__ == '__main__':
+    def _free_port(port, retries=5, delay=0.3):
+        if os.environ.get("PDF3MD_KILL_PORT", "1") != "1":
+            return
+        try:
+            for attempt in range(retries):
+                result = subprocess.run(
+                    ["lsof", "-ti", f":{port}"],
+                    capture_output=True,
+                    text=True,
+                    check=False
+                )
+                pids = [pid.strip() for pid in result.stdout.splitlines() if pid.strip().isdigit()]
+                if not pids:
+                    return
+                for pid in pids:
+                    try:
+                        os.kill(int(pid), signal.SIGTERM)
+                        logger.warning(f"Terminated process on port {port}: PID {pid}")
+                    except Exception as kill_error:
+                        logger.warning(f"Failed to terminate PID {pid} on port {port}: {kill_error}")
+                time.sleep(delay)
+
+            result = subprocess.run(
+                ["lsof", "-ti", f":{port}"],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            pids = [pid.strip() for pid in result.stdout.splitlines() if pid.strip().isdigit()]
+            for pid in pids:
+                try:
+                    os.kill(int(pid), signal.SIGKILL)
+                    logger.warning(f"Force killed process on port {port}: PID {pid}")
+                except Exception as kill_error:
+                    logger.warning(f"Failed to force kill PID {pid} on port {port}: {kill_error}")
+        except FileNotFoundError:
+            logger.warning("lsof not found; cannot auto-release port.")
+        except Exception as e:
+            logger.warning(f"Failed to free port {port}: {e}")
+
+    _free_port(6201)
     logger.info('Starting Flask server...')
     app.run(host='0.0.0.0', port=6201)

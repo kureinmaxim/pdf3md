@@ -1,11 +1,12 @@
 ; Inno Setup script for PDF3MD
 
 [Setup]
+#define AppVersion "0.1.0"
 AppName=PDF3MD
-AppVersion=1.0.0
+AppVersion={#AppVersion}
 DefaultDirName=C:\Project\pdf3md
 DefaultGroupName=PDF3MD
-OutputBaseFilename=PDF3MD-Setup
+OutputBaseFilename=PDF3MD-Setup-{#AppVersion}
 OutputDir=..\dist\windows
 Compression=lzma
 SolidCompression=yes

@@ -1,0 +1,7 @@
+[project]
+name = "pdf3md"
+version = "0.1.0"
+
+[tool.pdf3md]
+release_date = "2026-01-31"
+developer = "Kurein Maxim"

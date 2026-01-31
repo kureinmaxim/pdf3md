@@ -5,14 +5,23 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
 APP_DIR="$DIST_DIR/PDF3MD.app"
 BUILD_VENV="$DIST_DIR/build-venv"
-APP_VERSION="$(date +%Y%m%d%H%M%S)"
+APP_VERSION="$(python3 - <<'PY'
+import tomllib, pathlib
+path = pathlib.Path(__file__).resolve().parent.parent / "pyproject.toml"
+try:
+    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    print(data.get("project", {}).get("version", "0.1.0"))
+except Exception:
+    print("0.1.0")
+PY
+)"
 
 rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources/bin"
 mkdir -p "$APP_DIR/Contents/Resources/app_template"
 
-cat > "$APP_DIR/Contents/Info.plist" <<'EOF'
+cat > "$APP_DIR/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -24,9 +33,9 @@ cat > "$APP_DIR/Contents/Info.plist" <<'EOF'
   <key>CFBundleIdentifier</key>
   <string>com.pdf3md.app</string>
   <key>CFBundleVersion</key>
-  <string>1.0.0</string>
+  <string>${APP_VERSION}</string>
   <key>CFBundleShortVersionString</key>
-  <string>1.0.0</string>
+  <string>${APP_VERSION}</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleExecutable</key>
@@ -66,6 +75,9 @@ python3 -m venv "$BUILD_VENV"
 "$BUILD_VENV/bin/pip" install -r "$ROOT_DIR/pdf3md/requirements.txt"
 "$BUILD_VENV/bin/pip" install -r "$ROOT_DIR/macos/requirements-build.txt"
 
+echo "Generating build metadata..."
+"$BUILD_VENV/bin/python3" "$ROOT_DIR/scripts/build_meta.py"
+
 echo "Building backend binary..."
 cd "$ROOT_DIR"
 rm -rf "$DIST_DIR/pyinstaller"
@@ -78,6 +90,8 @@ mkdir -p "$DIST_DIR/pyinstaller"
   --workpath "$DIST_DIR/pyinstaller/build" \
   --specpath "$DIST_DIR/pyinstaller" \
   --add-data "$ROOT_DIR/pdf3md/dist:dist" \
+  --add-data "$ROOT_DIR/pdf3md/version.json:." \
+  --add-data "$ROOT_DIR/pdf3md/build_meta.json:." \
   "$ROOT_DIR/pdf3md/app.py"
 
 cp "$DIST_DIR/pyinstaller/pdf3md-server" "$APP_DIR/Contents/Resources/bin/pdf3md-server"

@@ -13,3 +13,7 @@ MacOS DMG build (local)
 Build requirements (only for building the DMG):
 - Python 3.13+
 - Node.js 18+
+
+Version management:
+- Update version: `python scripts/update_version.py sync`
+- Build metadata: `python scripts/build_meta.py`
