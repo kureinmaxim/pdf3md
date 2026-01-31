@@ -19,6 +19,7 @@ import traceback
 import subprocess
 import signal
 import tomllib
+import tempfile
 from docx import Document
 from docx.shared import Pt, Inches, Emu
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -77,9 +78,31 @@ if additional_origins_str:
 # Remove duplicates by converting to a set and back to a list
 final_origins = list(set(all_allowed_origins))
 
-# Set up logging (ensure logger is configured before use, especially for the CORS log line)
-logging.basicConfig(level=logging.DEBUG)
+# Set up logging configuration
+def _get_log_dir():
+    """Get platform-specific log directory."""
+    if sys.platform == "win32":
+        local_app_data = os.environ.get("LOCALAPPDATA", os.path.expanduser("~\\AppData\\Local"))
+        return os.path.join(local_app_data, "PDF3MD", "logs")
+    elif sys.platform == "darwin":
+        return os.path.join(os.path.expanduser("~"), "Library", "Logs", "PDF3MD")
+    else:
+        return os.path.join(os.path.expanduser("~"), ".local", "share", "PDF3MD", "logs")
+
+log_dir = _get_log_dir()
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, "server.log")
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file, encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 logger = logging.getLogger(__name__)
+logger.info(f"Logging configured. Log file: {log_file}")
 
 logger.info(f"Initializing CORS with origins: {final_origins}") # Log the origins
 
@@ -285,31 +308,24 @@ def convert_pdf_with_progress(temp_path, conversion_id, filename):
 def convert():
     try:
         # --- BEGIN ADDED CLEANUP ---
-        # Proactively clean up any orphaned temp_*.pdf files
-        # Assumes temp files are in the same directory as app.py
-        # The current working directory for app.py when run via Docker is /app/pdf3md
-        # but when run locally for dev, it's where app.py is.
-        # os.abspath('.') will give the correct directory in both cases if app.py is the entrypoint.
-        current_dir = os.path.abspath(os.path.dirname(__file__)) # More robust way to get script's dir
-        logger.info(f"Checking for orphaned temp files in: {current_dir}")
+        # Proactively clean up any orphaned temp_*.pdf files from system temp directory
+        temp_dir = tempfile.gettempdir()
+        logger.debug(f"Checking for orphaned temp files in: {temp_dir}")
         cleaned_count = 0
-        for filename in os.listdir(current_dir):
-            if filename.startswith('temp_') and filename.endswith('.pdf'):
-                # Further check if it's an orphaned file (not in current conversion_progress)
-                # This check is a bit tricky because conversion_id is generated *after* this cleanup.
-                # For simplicity, we'll clean up any file matching the pattern.
-                # A more sophisticated check might involve checking if the conversion_id part of the filename
-                # corresponds to an active or very recent conversion.
-                # However, given the problem is orphaned files, a broad cleanup is likely fine.
-                file_path_to_delete = os.path.join(current_dir, filename)
-                try:
-                    os.remove(file_path_to_delete)
-                    logger.info(f"Proactively removed orphaned temp file: {file_path_to_delete}")
-                    cleaned_count += 1
-                except Exception as e_clean:
-                    logger.error(f"Error removing orphaned temp file {file_path_to_delete}: {e_clean}")
-        if cleaned_count > 0:
-            logger.info(f"Proactively cleaned up {cleaned_count} orphaned temp PDF files.")
+        try:
+            for filename in os.listdir(temp_dir):
+                if filename.startswith('temp_') and filename.endswith('.pdf'):
+                    file_path_to_delete = os.path.join(temp_dir, filename)
+                    try:
+                        os.remove(file_path_to_delete)
+                        logger.info(f"Proactively removed orphaned temp file: {file_path_to_delete}")
+                        cleaned_count += 1
+                    except Exception as e_clean:
+                        logger.debug(f"Could not remove temp file {file_path_to_delete}: {e_clean}")
+            if cleaned_count > 0:
+                logger.info(f"Proactively cleaned up {cleaned_count} orphaned temp PDF files.")
+        except Exception as e:
+            logger.debug(f"Could not clean temp directory: {e}")
         # --- END ADDED CLEANUP ---
 
         if 'pdf' not in request.files:
@@ -324,8 +340,8 @@ def convert():
         # Generate unique conversion ID
         conversion_id = str(uuid.uuid4())
         
-        # Save uploaded file temporarily
-        temp_path = os.path.abspath(f'temp_{conversion_id}.pdf')
+        # Save uploaded file temporarily (use system temp dir for PyInstaller compatibility)
+        temp_path = os.path.join(tempfile.gettempdir(), f'temp_{conversion_id}.pdf')
         logger.info(f'Saving file to {temp_path}')
         file.save(temp_path)
         
@@ -357,7 +373,7 @@ def get_progress(conversion_id):
         # Clean up completed or errored conversions after sending response
         if progress_data.get('status') in ['completed', 'error']:
             # Clean up temp file
-            temp_path = os.path.abspath(f'temp_{conversion_id}.pdf')
+            temp_path = os.path.join(tempfile.gettempdir(), f'temp_{conversion_id}.pdf')
             if os.path.exists(temp_path):
                 os.remove(temp_path)
                 logger.info(f'Temp file removed: {temp_path}')
@@ -384,9 +400,9 @@ def markdown_to_docx(markdown_text, filename="document"):
         # pypandoc.ensure_pandoc_installed() # Optional
 
         # Generate a unique temporary filename for the DOCX output
+        # Use system temp directory to avoid read-only filesystem issues
         temp_docx_filename = f"temp_pandoc_output_{uuid.uuid4()}.docx"
-        # Ensure the temp path is absolute, similar to how temp PDFs are handled
-        temp_docx_path = os.path.abspath(temp_docx_filename)
+        temp_docx_path = os.path.join(tempfile.gettempdir(), temp_docx_filename)
 
         logger.debug(f"Attempting to convert markdown to docx for filename: {filename} using pandoc, outputting to {temp_docx_path}")
         
@@ -443,31 +459,78 @@ def _apply_docx_formatting(docx_path):
 
     doc.save(docx_path)
 
+def _get_pandoc_app_dir():
+    """Get platform-specific directory for pandoc storage."""
+    if sys.platform == "win32":
+        # Windows: %LOCALAPPDATA%\PDF3MD\pandoc
+        local_app_data = os.environ.get("LOCALAPPDATA", os.path.expanduser("~\\AppData\\Local"))
+        return os.path.join(local_app_data, "PDF3MD", "pandoc")
+    elif sys.platform == "darwin":
+        # macOS: ~/Library/Application Support/PDF3MD/pandoc
+        return os.path.join(os.path.expanduser("~"), "Library", "Application Support", "PDF3MD", "pandoc")
+    else:
+        # Linux: ~/.local/share/PDF3MD/pandoc
+        return os.path.join(os.path.expanduser("~"), ".local", "share", "PDF3MD", "pandoc")
+
+def _get_pandoc_executable_name():
+    """Get platform-specific pandoc executable name."""
+    return "pandoc.exe" if sys.platform == "win32" else "pandoc"
+
 def _ensure_pandoc_available():
     if os.environ.get("PDF3MD_SKIP_PANDOC_DOWNLOAD", "0") == "1":
         return
 
     pandoc_env = os.environ.get("PYPANDOC_PANDOC")
     if pandoc_env and os.path.exists(pandoc_env):
+        logger.info(f"Using existing PYPANDOC_PANDOC: {pandoc_env}")
         return
 
-    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-        bundled = os.path.join(sys._MEIPASS, "pandoc", "pandoc")
-        if os.path.exists(bundled):
-            os.environ["PYPANDOC_PANDOC"] = bundled
-            return
+    pandoc_exe = _get_pandoc_executable_name()
 
-    app_support = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "PDF3MD", "pandoc")
-    pandoc_path = os.path.join(app_support, "pandoc")
+    # Check for bundled Pandoc (PyInstaller)
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        bundled = os.path.join(sys._MEIPASS, "pandoc", pandoc_exe)
+        logger.info(f"Checking for bundled Pandoc at: {bundled}")
+        if os.path.exists(bundled):
+            # Ensure it is executable (Unix only)
+            if sys.platform != "win32":
+                try:
+                    os.chmod(bundled, 0o755)
+                    logger.info(f"Made bundled Pandoc executable: {bundled}")
+                except Exception as e:
+                    logger.warning(f"Failed to chmod bundled Pandoc: {e}")
+            
+            os.environ["PYPANDOC_PANDOC"] = bundled
+            logger.info(f"Set PYPANDOC_PANDOC to bundled binary: {bundled}")
+            return
+        else:
+            logger.warning(f"Bundled Pandoc NOT found at: {bundled}")
+            # Log what's in _MEIPASS for debugging
+            try:
+                meipass_contents = os.listdir(sys._MEIPASS)
+                logger.info(f"_MEIPASS contents: {meipass_contents[:20]}...")
+                pandoc_dir = os.path.join(sys._MEIPASS, "pandoc")
+                if os.path.exists(pandoc_dir):
+                    logger.info(f"pandoc dir contents: {os.listdir(pandoc_dir)}")
+            except Exception as e:
+                logger.warning(f"Failed to list _MEIPASS: {e}")
+
+    # Check platform-specific app data directory
+    app_support = _get_pandoc_app_dir()
+    pandoc_path = os.path.join(app_support, pandoc_exe)
     if os.path.exists(pandoc_path):
+        logger.info(f"Found Pandoc in app data: {pandoc_path}")
         os.environ["PYPANDOC_PANDOC"] = pandoc_path
         return
 
-    os.makedirs(app_support, exist_ok=True)
+    # Try to download pandoc
     try:
+        os.makedirs(app_support, exist_ok=True)
+        logger.info(f"Attempting to download pandoc to: {app_support}")
         pypandoc.download_pandoc(targetfolder=app_support)
         if os.path.exists(pandoc_path):
             os.environ["PYPANDOC_PANDOC"] = pandoc_path
+            logger.info(f"Downloaded and set Pandoc: {pandoc_path}")
     except Exception as e:
         logger.error(f"Failed to download pandoc: {e}")
 
@@ -992,10 +1055,10 @@ def convert_word_to_markdown_route():
             logger.error(f'Invalid file type: {file.filename}. Expected .docx')
             return jsonify({'error': 'Invalid file type. Only .docx files are supported'}), 400
 
-        # Save uploaded file temporarily
+        # Save uploaded file temporarily (use system temp dir for PyInstaller compatibility)
         conversion_id = str(uuid.uuid4()) # For unique temp filename
         temp_filename = f'temp_word_upload_{conversion_id}.docx'
-        temp_path = os.path.abspath(temp_filename)
+        temp_path = os.path.join(tempfile.gettempdir(), temp_filename)
         logger.info(f'Saving Word file to {temp_path}')
         file.save(temp_path)
         

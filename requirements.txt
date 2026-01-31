@@ -1,1 +1,2 @@
 -r pdf3md/requirements.txt
+-r macos/requirements-build.txt

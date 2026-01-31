@@ -131,7 +131,7 @@ npm run dev
 Build the frontend once and serve it from Flask:
 
 ```bash
-cd /Users/olgazaharova/Project/pdf3md
+cd /Users/olgazaharova/Project/pdf3md/pdf3md
 npm install
 npm run build
 ```

@@ -172,16 +172,43 @@ npm run dev
 
 ---
 
-## Production Build (No Dev Server)
+## Production Build (For "No Dev Server" Mode)
 
-To run production locally:
+This mode runs the optimized React build served by Flask, instead of the Vite development server.
+
+### 1. Build the Frontend
+This compiles the Javascript/CSS assets. The command **does not** start the server.
 
 ```bash
-cd /Users/olgazaharova/Project/pdf3md
+cd /Users/olgazaharova/Project/pdf3md/pdf3md
+npm install
 npm run build
 ```
 
-Then keep the backend running and open: `http://localhost:6201`
+### 2. Start the Backend Server
+You must start the Python backend to serve the built application.
+
+```bash
+# In the /pdf3md/pdf3md folder
+python3 app.py
+```
+
+Then open: `http://localhost:6201`
+
+---
+
+## macOS Desktop App (.dmg)
+
+If you want a standalone macOS application (like an `.exe` but for Mac), use the build script. This **automatically** builds the frontend and bundles the Python backend.
+
+```bash
+cd /Users/olgazaharova/Project/pdf3md
+./macos/build_dmg.sh
+```
+
+- Output: `dist/PDF3MD.dmg`
+- Drag `PDF3MD.app` to Applications.
+- Launching the app starts the server and opens the browser automatically.
 
 ---
 
@@ -231,7 +258,7 @@ cd /Users/olgazaharova/Project/pdf3md
 Open the DMG and drag `PDF3MD.app` to Applications.  
 Launch the app to open `http://localhost:6201`.
 
-> Note: Pandoc is still required for Markdown → DOCX conversion.
+> **Note**: The build script now bundles Pandoc into the App, so it **works offline** without manual installation.
 
 ---
 

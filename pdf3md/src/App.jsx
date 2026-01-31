@@ -592,7 +592,8 @@ function App() {
   };
 
   return (
-    <div className="app-layout">
+    <>
+      <div className="app-layout">
       {mode === 'pdf-to-md' && (
         <Sidebar
           isOpen={sidebarOpen}
@@ -879,33 +880,34 @@ function App() {
           )}
         </div>
       </div>
-    </div>
-    {showAbout && versionInfo && (
-      <div className="about-overlay" onClick={() => setShowAbout(false)}>
-        <div className="about-modal" onClick={(e) => e.stopPropagation()}>
-          <div className="about-header">
-            <h3>About PDF3MD</h3>
-            <button className="about-close" onClick={() => setShowAbout(false)}>×</button>
-          </div>
-          <div className="about-content">
-            <div className="about-row"><span>Version</span><span>{versionInfo.version}</span></div>
-            <div className="about-row"><span>Release date</span><span>{versionInfo.release_date}</span></div>
-            <div className="about-row"><span>Developer</span><span>{versionInfo.developer}</span></div>
-            {showGitMeta && (
-              <>
-                <div className="about-row"><span>Git commit</span><span>{versionInfo.git_commit || "unknown"}</span></div>
-                <div className="about-row"><span>Git branch</span><span>{versionInfo.git_branch || "unknown"}</span></div>
-                <div className="about-row"><span>Git describe</span><span>{versionInfo.git_describe || "unknown"}</span></div>
-                <div className="about-row"><span>Dirty</span><span>{String(versionInfo.git_dirty)}</span></div>
-              </>
-            )}
-            {showBuildTime && (
-              <div className="about-row"><span>Build time</span><span>{versionInfo.generated_at}</span></div>
-            )}
+      </div>
+      {showAbout && versionInfo && (
+        <div className="about-overlay" onClick={() => setShowAbout(false)}>
+          <div className="about-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="about-header">
+              <h3>About PDF3MD</h3>
+              <button className="about-close" onClick={() => setShowAbout(false)}>×</button>
+            </div>
+            <div className="about-content">
+              <div className="about-row"><span>Version</span><span>{versionInfo.version}</span></div>
+              <div className="about-row"><span>Release date</span><span>{versionInfo.release_date}</span></div>
+              <div className="about-row"><span>Developer</span><span>{versionInfo.developer}</span></div>
+              {showGitMeta && (
+                <>
+                  <div className="about-row"><span>Git commit</span><span>{versionInfo.git_commit || "unknown"}</span></div>
+                  <div className="about-row"><span>Git branch</span><span>{versionInfo.git_branch || "unknown"}</span></div>
+                  <div className="about-row"><span>Git describe</span><span>{versionInfo.git_describe || "unknown"}</span></div>
+                  <div className="about-row"><span>Dirty</span><span>{String(versionInfo.git_dirty)}</span></div>
+                </>
+              )}
+              {showBuildTime && (
+                <div className="about-row"><span>Build time</span><span>{versionInfo.generated_at}</span></div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
+    </>
   )
 }
 

@@ -209,6 +209,8 @@ Repository layout: `pdf3md/app.py` is the backend, `pdf3md/` folder also contain
     (Frontend at `http://localhost:5173`)
 3.  **Production mode** (no dev server):
     ```bash
+    cd /Users/olgazaharova/Project/pdf3md/pdf3md
+    npm install
     npm run build
     ```
     Then keep the backend running and open: `http://localhost:6201`
