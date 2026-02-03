@@ -2,9 +2,9 @@
   "version": "0.1.1",
   "release_date": "2026-01-31",
   "developer": "Kurein Maxim",
-  "git_commit": "d844afe",
-  "git_branch": "main",
-  "git_describe": "d844afe",
-  "git_dirty": true,
-  "generated_at": "2026-01-31T19:01:45.293022Z"
+  "git_commit": null,
+  "git_branch": null,
+  "git_describe": null,
+  "git_dirty": false,
+  "generated_at": "2026-02-01T18:20:06.854543Z"
 }
