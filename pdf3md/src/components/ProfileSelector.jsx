@@ -4,6 +4,7 @@ import { fetchProfiles } from '../api/profileApi';
 import './ProfileSelector.css';
 
 function ProfileSelector({ selectedProfile, onProfileChange, onManageClick, disabled }) {
+console.log("ProfileSelector loaded");
     const [profiles, setProfiles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);

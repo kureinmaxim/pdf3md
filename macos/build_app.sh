@@ -77,7 +77,9 @@ echo "==> Preparing frontend template..."
 rm -rf "$APP_DIR/Contents/Resources/app_template"
 mkdir -p "$APP_DIR/Contents/Resources/app_template"
 cp -R "$ROOT_DIR/pdf3md/dist/." "$APP_DIR/Contents/Resources/app_template/"
-echo "$APP_VERSION" > "$APP_DIR/Contents/Resources/app_template/.app_version"
+TEMPLATE_VERSION="${APP_VERSION}-$(date -u +"%Y%m%d%H%M%S")"
+echo "$TEMPLATE_VERSION" > "$APP_DIR/Contents/Resources/app_template/.app_version"
+echo "   Template version: $TEMPLATE_VERSION"
 
 # Prepare Python build environment
 echo "==> Setting up Python build environment..."

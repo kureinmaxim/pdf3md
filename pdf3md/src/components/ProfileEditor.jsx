@@ -6,6 +6,23 @@ function ProfileEditor({ profile, onSave, onCancel }) {
     const [formData, setFormData] = useState(profile);
     const [activeTab, setActiveTab] = useState('page');
     const [saving, setSaving] = useState(false);
+    const CM_PER_INCH = 2.54;
+    const MM_PER_INCH = 25.4;
+
+    const roundTo = (value, decimals = 2) => {
+        const factor = 10 ** decimals;
+        return Math.round(value * factor) / factor;
+    };
+
+    const inchesToCm = (inches) => roundTo(inches * CM_PER_INCH, 2);
+    const cmToInches = (cm) => roundTo(cm / CM_PER_INCH, 4);
+    const inchesToMm = (inches) => roundTo(inches * MM_PER_INCH, 1);
+    const mmToInches = (mm) => roundTo(mm / MM_PER_INCH, 4);
+
+    const toNumber = (value, fallback) => {
+        const parsed = parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    };
 
     const handleChange = (section, field, value) => {
         setFormData(prev => ({
@@ -106,21 +123,21 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                             <h3>Page Dimensions</h3>
                             <div className="pe-grid">
                                 <div className="pe-field">
-                                    <label>Width (inches)</label>
+                                    <label>Width (cm)</label>
                                     <input
                                         type="number"
                                         step="0.1"
-                                        value={formData.page?.width || 8.5}
-                                        onChange={(e) => handleChange('page', 'width', parseFloat(e.target.value))}
+                                        value={inchesToCm(formData.page?.width ?? 8.5)}
+                                        onChange={(e) => handleChange('page', 'width', cmToInches(toNumber(e.target.value, 0)))}
                                     />
                                 </div>
                                 <div className="pe-field">
-                                    <label>Height (inches)</label>
+                                    <label>Height (cm)</label>
                                     <input
                                         type="number"
                                         step="0.1"
-                                        value={formData.page?.height || 11}
-                                        onChange={(e) => handleChange('page', 'height', parseFloat(e.target.value))}
+                                        value={inchesToCm(formData.page?.height ?? 11)}
+                                        onChange={(e) => handleChange('page', 'height', cmToInches(toNumber(e.target.value, 0)))}
                                     />
                                 </div>
                             </div>
@@ -128,39 +145,39 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                             <h3>Margins</h3>
                             <div className="pe-grid four">
                                 <div className="pe-field">
-                                    <label>Top</label>
+                                    <label>Top (mm)</label>
                                     <input
                                         type="number"
                                         step="0.1"
-                                        value={formData.page?.top_margin || 0.3}
-                                        onChange={(e) => handleChange('page', 'top_margin', parseFloat(e.target.value))}
+                                        value={inchesToMm(formData.page?.top_margin ?? 0.3)}
+                                        onChange={(e) => handleChange('page', 'top_margin', mmToInches(toNumber(e.target.value, 0)))}
                                     />
                                 </div>
                                 <div className="pe-field">
-                                    <label>Bottom</label>
+                                    <label>Bottom (mm)</label>
                                     <input
                                         type="number"
                                         step="0.1"
-                                        value={formData.page?.bottom_margin || 0.3}
-                                        onChange={(e) => handleChange('page', 'bottom_margin', parseFloat(e.target.value))}
+                                        value={inchesToMm(formData.page?.bottom_margin ?? 0.3)}
+                                        onChange={(e) => handleChange('page', 'bottom_margin', mmToInches(toNumber(e.target.value, 0)))}
                                     />
                                 </div>
                                 <div className="pe-field">
-                                    <label>Left</label>
+                                    <label>Left (mm)</label>
                                     <input
                                         type="number"
                                         step="0.1"
-                                        value={formData.page?.left_margin || 0.79}
-                                        onChange={(e) => handleChange('page', 'left_margin', parseFloat(e.target.value))}
+                                        value={inchesToMm(formData.page?.left_margin ?? 0.79)}
+                                        onChange={(e) => handleChange('page', 'left_margin', mmToInches(toNumber(e.target.value, 0)))}
                                     />
                                 </div>
                                 <div className="pe-field">
-                                    <label>Right</label>
+                                    <label>Right (mm)</label>
                                     <input
                                         type="number"
                                         step="0.1"
-                                        value={formData.page?.right_margin || 0.33}
-                                        onChange={(e) => handleChange('page', 'right_margin', parseFloat(e.target.value))}
+                                        value={inchesToMm(formData.page?.right_margin ?? 0.33)}
+                                        onChange={(e) => handleChange('page', 'right_margin', mmToInches(toNumber(e.target.value, 0)))}
                                     />
                                 </div>
                             </div>
@@ -168,21 +185,21 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                             <h3>Header/Footer Distance</h3>
                             <div className="pe-grid">
                                 <div className="pe-field">
-                                    <label>Header Distance</label>
+                                    <label>Header Distance (mm)</label>
                                     <input
                                         type="number"
                                         step="0.1"
-                                        value={formData.page?.header_distance || 0}
-                                        onChange={(e) => handleChange('page', 'header_distance', parseFloat(e.target.value))}
+                                        value={inchesToMm(formData.page?.header_distance ?? 0)}
+                                        onChange={(e) => handleChange('page', 'header_distance', mmToInches(toNumber(e.target.value, 0)))}
                                     />
                                 </div>
                                 <div className="pe-field">
-                                    <label>Footer Distance</label>
+                                    <label>Footer Distance (mm)</label>
                                     <input
                                         type="number"
                                         step="0.1"
-                                        value={formData.page?.footer_distance || 0.2}
-                                        onChange={(e) => handleChange('page', 'footer_distance', parseFloat(e.target.value))}
+                                        value={inchesToMm(formData.page?.footer_distance ?? 0.2)}
+                                        onChange={(e) => handleChange('page', 'footer_distance', mmToInches(toNumber(e.target.value, 0)))}
                                     />
                                 </div>
                             </div>
@@ -417,7 +434,7 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                                 </label>
                             </div>
 
-                            <h3>Column Width (inches)</h3>
+                            <h3>Column Width (cm)</h3>
                             <div className="pe-grid">
                                 <div className="pe-field">
                                     <label>Min Width</label>
@@ -426,8 +443,8 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                                         step="0.05"
                                         min="0.1"
                                         max="2"
-                                        value={formData.tables?.min_col_width || 0.35}
-                                        onChange={(e) => handleChange('tables', 'min_col_width', parseFloat(e.target.value))}
+                                        value={inchesToCm(formData.tables?.min_col_width ?? 0.35)}
+                                        onChange={(e) => handleChange('tables', 'min_col_width', cmToInches(toNumber(e.target.value, 0)))}
                                     />
                                 </div>
                                 <div className="pe-field">
@@ -437,8 +454,8 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                                         step="0.1"
                                         min="1"
                                         max="6"
-                                        value={formData.tables?.max_col_width || 3.0}
-                                        onChange={(e) => handleChange('tables', 'max_col_width', parseFloat(e.target.value))}
+                                        value={inchesToCm(formData.tables?.max_col_width ?? 3.0)}
+                                        onChange={(e) => handleChange('tables', 'max_col_width', cmToInches(toNumber(e.target.value, 0)))}
                                     />
                                 </div>
                             </div>

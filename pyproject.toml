@@ -1,6 +1,6 @@
 [project]
 name = "pdf3md"
-version = "1.0.0"
+version = "1.0.1"
 
 [tool.pdf3md]
 release_date = "2026-02-04"
