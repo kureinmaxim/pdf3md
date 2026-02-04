@@ -26,7 +26,7 @@ if (Test-Path $VENV_DIR) {
     Remove-Item -Recurse -Force $VENV_DIR
 }
 python -m venv $VENV_DIR
-& "$VENV_DIR\Scripts\pip.exe" install --upgrade pip
+& "$VENV_DIR\Scripts\python.exe" -m pip install --upgrade pip
 
 # Install dependencies
 $PDF3MD_DIR = Join-Path $ROOT_DIR "pdf3md"
