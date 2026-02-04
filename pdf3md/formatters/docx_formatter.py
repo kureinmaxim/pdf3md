@@ -1,6 +1,7 @@
 """DOCX document formatting utilities."""
 
 import re
+from typing import Dict, Any, Optional
 from docx.shared import Pt, Inches, Emu
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_ALIGN_VERTICAL
@@ -12,59 +13,84 @@ from .docx_cleaners import (
     remove_horizontal_rules,
     remove_shape_lines,
 )
+from .profile_schema import DEFAULT_PROFILE
 
 
-def apply_docx_formatting(docx_path):
-    """Apply all formatting to a DOCX document.
+def apply_docx_formatting(docx_path: str, profile: Optional[Dict[str, Any]] = None):
+    """Apply all formatting to a DOCX document using the specified profile.
 
     Args:
         docx_path: Path to the DOCX file
+        profile: Profile dictionary. If None, uses DEFAULT_PROFILE
     """
     from docx import Document
 
+    if profile is None:
+        profile = DEFAULT_PROFILE
+
     doc = Document(docx_path)
 
-    apply_page_margins(doc)
+    apply_page_margins(doc, profile)
     remove_leading_metadata(doc)
     remove_horizontal_rules(doc)
     remove_shape_lines(doc)
-    add_page_numbers(doc)
-    apply_heading_sizes(doc)
-    format_tables(doc)
+    add_page_numbers(doc, profile)
+    apply_heading_sizes(doc, profile)
+    format_tables(doc, profile)
 
     doc.save(docx_path)
 
 
-def apply_page_margins(doc):
-    """Apply standard page margins to document.
+def apply_page_margins(doc, profile: Dict[str, Any]):
+    """Apply page margins to document based on profile.
 
     Args:
         doc: Document object
+        profile: Profile dictionary
     """
+    page_settings = profile.get("page", {})
+
     for section in doc.sections:
-        section.page_width = Inches(8.5)
-        section.page_height = Inches(11)
-        section.top_margin = Inches(0.3)
-        section.bottom_margin = Inches(0.3)
-        section.left_margin = Inches(0.79)
-        section.right_margin = Inches(0.33)
-        section.header_distance = Inches(0)
-        section.footer_distance = Inches(0.2)
+        section.page_width = Inches(page_settings.get("width", 8.5))
+        section.page_height = Inches(page_settings.get("height", 11))
+        section.top_margin = Inches(page_settings.get("top_margin", 0.3))
+        section.bottom_margin = Inches(page_settings.get("bottom_margin", 0.3))
+        section.left_margin = Inches(page_settings.get("left_margin", 0.79))
+        section.right_margin = Inches(page_settings.get("right_margin", 0.33))
+        section.header_distance = Inches(page_settings.get("header_distance", 0))
+        section.footer_distance = Inches(page_settings.get("footer_distance", 0.2))
 
 
-def add_page_numbers(doc):
-    """Add page numbers to document footer.
+
+def add_page_numbers(doc, profile: Dict[str, Any]):
+    """Add page numbers to document footer based on profile.
 
     Args:
         doc: Document object
+        profile: Profile dictionary
     """
+    page_numbers_config = profile.get("page_numbers", {})
+
+    if not page_numbers_config.get("enabled", True):
+        return
+
+    position = page_numbers_config.get("position", "footer_right")
+    
+    # Determine alignment based on position
+    if "right" in position:
+        alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    elif "center" in position:
+        alignment = WD_ALIGN_PARAGRAPH.CENTER
+    else:
+        alignment = WD_ALIGN_PARAGRAPH.LEFT
+
     for section in doc.sections:
         footer = section.footer
         if footer.paragraphs:
             paragraph = footer.paragraphs[0]
         else:
             paragraph = footer.add_paragraph()
-        paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        paragraph.alignment = alignment
 
         run = paragraph.add_run()
         fld_char_begin = OxmlElement("w:fldChar")
@@ -86,42 +112,70 @@ def add_page_numbers(doc):
         run._r.append(fld_char_end)
 
 
-def apply_heading_sizes(doc):
-    """Apply font sizes to headings.
+
+def apply_heading_sizes(doc, profile: Dict[str, Any]):
+    """Apply font sizes to headings based on profile.
 
     Args:
         doc: Document object
+        profile: Profile dictionary
     """
+    headings_config = profile.get("headings", {})
+    
     heading_sizes = {
-        "Heading 1": 14,
-        "Heading 2": 12,
-        "Heading 3": 11,
-        "Heading 4": 10,
-        "Heading 5": 9,
-        "Heading 6": 9,
+        "Heading 1": headings_config.get("h1_size", 14),
+        "Heading 2": headings_config.get("h2_size", 12),
+        "Heading 3": headings_config.get("h3_size", 11),
+        "Heading 4": headings_config.get("h4_size", 10),
+        "Heading 5": headings_config.get("h5_size", 9),
+        "Heading 6": headings_config.get("h6_size", 9),
     }
+
+    bold = headings_config.get("bold", True)
 
     for style_name, size_pt in heading_sizes.items():
         if style_name in doc.styles:
             style = doc.styles[style_name]
             if style and style.font:
                 style.font.size = Pt(size_pt)
+                if bold:
+                    style.font.bold = True
 
     for paragraph in doc.paragraphs:
         if paragraph.style and paragraph.style.name in heading_sizes:
             size_pt = heading_sizes[paragraph.style.name]
             for run in paragraph.runs:
                 run.font.size = Pt(size_pt)
+                if bold:
+                    run.bold = True
 
 
-def format_tables(doc):
-    """Format all tables in the document.
+
+def format_tables(doc, profile: Dict[str, Any]):
+    """Format all tables in the document based on profile.
 
     Args:
         doc: Document object
+        profile: Profile dictionary
     """
     if not doc.tables:
         return
+
+    tables_config = profile.get("tables", {})
+    fonts_config = profile.get("fonts", {})
+    
+    # Get table font sizes
+    table_header_font = fonts_config.get("table_header", {})
+    table_body_font = fonts_config.get("table_body", {})
+    
+    header_font_size = Pt(table_header_font.get("size", 10))
+    body_font_size = Pt(table_body_font.get("size", 10))
+    
+    # Table settings
+    header_bold = tables_config.get("header_bold", True)
+    header_center = tables_config.get("header_center", True)
+    min_col_width = Inches(tables_config.get("min_col_width", 0.35))
+    max_col_width = Inches(tables_config.get("max_col_width", 3.0))
 
     section = doc.sections[0]
     available_width = section.page_width - section.left_margin - section.right_margin
@@ -131,37 +185,40 @@ def format_tables(doc):
         cols_count = len(table.columns)
 
         if cols_count >= 6:
-            min_col_width = Inches(0.35)
-            max_col_width = Inches(2.6)
+            min_col_width_local = Inches(0.35)
+            max_col_width_local = Inches(2.6)
             table_font_size = Pt(10)
         elif rows_count >= 6:
-            min_col_width = Inches(0.45)
-            max_col_width = Inches(3.0)
-            table_font_size = Pt(10)
+            min_col_width_local = Inches(0.45)
+            max_col_width_local = Inches(3.0)
+            table_font_size = body_font_size
         elif cols_count == 2:
-            min_col_width = Inches(0.5)
-            max_col_width = Inches(3.2)
+            min_col_width_local = Inches(0.5)
+            max_col_width_local = Inches(3.2)
             table_font_size = Pt(11)
         else:
-            min_col_width = Inches(0.45)
-            max_col_width = Inches(3.0)
-            table_font_size = Pt(11)
+            min_col_width_local = min_col_width
+            max_col_width_local = max_col_width
+            table_font_size = body_font_size
 
         table.style = "Table"
         table.autofit = False
-        set_table_borders(table)
+        set_table_borders(table, tables_config)
 
         header_row = table.rows[0] if table.rows else None
 
         for row_index, row in enumerate(table.rows):
             for cell in row.cells:
-                set_cell_borders(cell)
+                set_cell_borders(cell, tables_config)
                 for paragraph in cell.paragraphs:
                     for run in paragraph.runs:
-                        run.font.size = table_font_size
                         if header_row and row_index == 0:
-                            run.bold = True
-                    if header_row and row_index == 0:
+                            run.font.size = header_font_size
+                            if header_bold:
+                                run.bold = True
+                        else:
+                            run.font.size = table_font_size
+                    if header_row and row_index == 0 and header_center:
                         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 if header_row and row_index == 0:
                     cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
@@ -171,8 +228,9 @@ def format_tables(doc):
 
         align_table_columns(table)
         adjust_table_column_widths(
-            table, available_width, min_col_width, max_col_width, header_row
+            table, available_width, min_col_width_local, max_col_width_local, header_row
         )
+
 
 
 def adjust_table_column_widths(
@@ -405,12 +463,17 @@ def get_header_min_width(header_text):
     return 1.4
 
 
-def set_table_borders(table):
-    """Set borders for a table.
+def set_table_borders(table, tables_config: Dict[str, Any]):
+    """Set borders for a table based on profile.
 
     Args:
         table: Table object
+        tables_config: Tables configuration from profile
     """
+    border_style = tables_config.get("border_style", "single")
+    border_width = str(tables_config.get("border_width", 8))
+    border_color = tables_config.get("border_color", "000000")
+
     tbl = table._tbl
     tbl_pr = tbl.tblPr
     borders = tbl_pr.find(qn("w:tblBorders"))
@@ -423,18 +486,23 @@ def set_table_borders(table):
         if element is None:
             element = OxmlElement(f"w:{edge}")
             borders.append(element)
-        element.set(qn("w:val"), "single")
-        element.set(qn("w:sz"), "8")
+        element.set(qn("w:val"), border_style)
+        element.set(qn("w:sz"), border_width)
         element.set(qn("w:space"), "0")
-        element.set(qn("w:color"), "000000")
+        element.set(qn("w:color"), border_color)
 
 
-def set_cell_borders(cell):
-    """Set borders for a table cell.
+def set_cell_borders(cell, tables_config: Dict[str, Any]):
+    """Set borders for a table cell based on profile.
 
     Args:
         cell: Cell object
+        tables_config: Tables configuration from profile
     """
+    border_style = tables_config.get("border_style", "single")
+    border_width = str(tables_config.get("border_width", 8))
+    border_color = tables_config.get("border_color", "000000")
+
     tc = cell._tc
     tc_pr = tc.get_or_add_tcPr()
     borders = tc_pr.find(qn("w:tcBorders"))
@@ -448,10 +516,11 @@ def set_cell_borders(cell):
         if element is None:
             element = OxmlElement(f"w:{edge}")
             borders.append(element)
-        element.set(qn("w:val"), "single")
-        element.set(qn("w:sz"), "8")
+        element.set(qn("w:val"), border_style)
+        element.set(qn("w:sz"), border_width)
         element.set(qn("w:space"), "0")
-        element.set(qn("w:color"), "000000")
+        element.set(qn("w:color"), border_color)
+
 
 
 def get_cell_text(cell):

@@ -6,20 +6,24 @@ import tempfile
 import uuid
 from datetime import datetime
 from io import BytesIO
+from typing import Optional
 import pypandoc
 
 from ..utils import ensure_pandoc_available, format_file_size
-from ..formatters import apply_docx_formatting
+from ..formatters import apply_docx_formatting, get_profile_manager
 
 logger = logging.getLogger(__name__)
 
 
-def markdown_to_docx(markdown_text, filename="document"):
+def markdown_to_docx(
+    markdown_text: str, filename: str = "document", profile_name: Optional[str] = None
+):
     """Convert markdown text to a Word document using Pandoc.
 
     Args:
         markdown_text: Markdown text to convert
         filename: Base filename for logging
+        profile_name: Name of profile to use for formatting. If None, uses default profile
 
     Returns:
         BytesIO buffer containing DOCX data
@@ -27,6 +31,20 @@ def markdown_to_docx(markdown_text, filename="document"):
     temp_docx_path = None
     try:
         ensure_pandoc_available()
+
+        # Load profile
+        profile_manager = get_profile_manager()
+        if profile_name:
+            profile = profile_manager.load_profile(profile_name)
+            if not profile:
+                logger.warning(
+                    f"Profile '{profile_name}' not found, using default profile"
+                )
+                profile = profile_manager.get_default_profile()
+        else:
+            profile = profile_manager.get_default_profile()
+
+        logger.info(f"Using profile '{profile.get('name', 'default')}' for conversion")
 
         temp_docx_filename = f"temp_pandoc_output_{uuid.uuid4()}.docx"
         temp_docx_path = os.path.join(tempfile.gettempdir(), temp_docx_filename)
@@ -38,7 +56,7 @@ def markdown_to_docx(markdown_text, filename="document"):
         )
 
         try:
-            apply_docx_formatting(temp_docx_path)
+            apply_docx_formatting(temp_docx_path, profile)
         except Exception as format_error:
             logger.warning(f"Post-processing DOCX formatting failed: {format_error}")
 
@@ -68,6 +86,7 @@ def markdown_to_docx(markdown_text, filename="document"):
                 logger.error(
                     f"Error removing temporary file {temp_docx_path}: {str(e_clean)}"
                 )
+
 
 
 def convert_docx_to_markdown(docx_path, original_filename):
