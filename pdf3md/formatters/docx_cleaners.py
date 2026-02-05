@@ -73,16 +73,21 @@ def remove_horizontal_rules(doc):
             delete_paragraph(paragraph)
 
     for section in doc.sections:
-        section.header.is_linked_to_previous = False
-        section.footer.is_linked_to_previous = False
-        for paragraph in list(section.header.paragraphs):
-            if has_horizontal_rule(paragraph):
-                delete_paragraph(paragraph)
-            else:
-                paragraph.clear()
-        for paragraph in list(section.footer.paragraphs):
-            if has_horizontal_rule(paragraph):
-                delete_paragraph(paragraph)
+        try:
+            section.header.is_linked_to_previous = False
+            section.footer.is_linked_to_previous = False
+            for paragraph in list(section.header.paragraphs):
+                if has_horizontal_rule(paragraph):
+                    delete_paragraph(paragraph)
+                else:
+                    paragraph.clear()
+            for paragraph in list(section.footer.paragraphs):
+                if has_horizontal_rule(paragraph):
+                    delete_paragraph(paragraph)
+        except FileNotFoundError:
+            # Some packaged environments miss docx template resources.
+            # Skip header/footer cleanup in that case.
+            continue
 
 
 def remove_shape_lines(doc):

@@ -16,6 +16,16 @@ from .docx_cleaners import (
 from .profile_schema import DEFAULT_PROFILE
 
 
+def _coerce_float(value, default, minimum=None):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        number = float(default)
+    if minimum is not None and number < minimum:
+        return float(minimum)
+    return number
+
+
 def apply_docx_formatting(docx_path: str, profile: Optional[Dict[str, Any]] = None):
     """Apply all formatting to a DOCX document using the specified profile.
 
@@ -32,13 +42,84 @@ def apply_docx_formatting(docx_path: str, profile: Optional[Dict[str, Any]] = No
 
     apply_page_margins(doc, profile)
     remove_leading_metadata(doc)
-    remove_horizontal_rules(doc)
+    try:
+        remove_horizontal_rules(doc)
+    except FileNotFoundError:
+        pass
     remove_shape_lines(doc)
-    add_page_numbers(doc, profile)
+    try:
+        add_profile_debug_header(doc, profile)
+    except FileNotFoundError:
+        pass
+    try:
+        add_page_numbers(doc, profile)
+    except FileNotFoundError:
+        pass
     apply_heading_sizes(doc, profile)
+    apply_body_font(doc, profile)
+    apply_paragraph_formatting(doc, profile)
     format_tables(doc, profile)
 
     doc.save(docx_path)
+
+
+def apply_body_font(doc, profile: Dict[str, Any]):
+    """Apply body font settings to document.
+
+    Args:
+        doc: Document object
+        profile: Profile dictionary
+    """
+    fonts_config = profile.get("fonts", {})
+    body_font = fonts_config.get("body", {})
+    
+    font_name = body_font.get("name", "Calibri")
+    font_size = _coerce_float(body_font.get("size", 11), 11, minimum=1)
+
+    # Update Normal style which affects most text
+    if 'Normal' in doc.styles:
+        style = doc.styles['Normal']
+        style.font.name = font_name
+        style.font.size = Pt(font_size)
+        
+        # Explicitly set rFonts to ensure it overrides defaults
+        if style.element.rPr is None:
+            style.element.get_or_add_rPr()
+        
+        rFonts = style.element.rPr.find(qn('w:rFonts'))
+        if rFonts is None:
+            rFonts = OxmlElement('w:rFonts')
+            style.element.rPr.append(rFonts)
+            
+        rFonts.set(qn('w:ascii'), font_name)
+        rFonts.set(qn('w:hAnsi'), font_name)
+        rFonts.set(qn('w:cs'), font_name)
+
+    # Also iterate through all paragraphs to ensure those without explicit style 
+    # or with direct formatting overrides get the correct font, IF they are using Normal style
+    # or are just plain paragraphs.
+    for paragraph in doc.paragraphs:
+        # Check if paragraph is using Normal style or no style
+        if paragraph.style.name == 'Normal':
+            paragraph.style.font.name = font_name
+            paragraph.style.font.size = Pt(font_size)
+            for run in paragraph.runs:
+                # Only override if run doesn't have its own distinct formatting
+                # (This is a heuristic, blindly overriding everything might be too aggressive,
+                # but for MD conversion usually desired).
+                run.font.name = font_name
+                run.font.size = Pt(font_size)
+                
+                # Apply rFonts to runs as well
+                if run._element.rPr is None:
+                    run._element.get_or_add_rPr()
+                rFonts = run._element.rPr.find(qn('w:rFonts'))
+                if rFonts is None:
+                    rFonts = OxmlElement('w:rFonts')
+                    run._element.rPr.append(rFonts)
+                rFonts.set(qn('w:ascii'), font_name)
+                rFonts.set(qn('w:hAnsi'), font_name)
+                rFonts.set(qn('w:cs'), font_name)
 
 
 def apply_page_margins(doc, profile: Dict[str, Any]):
@@ -51,14 +132,30 @@ def apply_page_margins(doc, profile: Dict[str, Any]):
     page_settings = profile.get("page", {})
 
     for section in doc.sections:
-        section.page_width = Inches(page_settings.get("width", 8.5))
-        section.page_height = Inches(page_settings.get("height", 11))
-        section.top_margin = Inches(page_settings.get("top_margin", 0.3))
-        section.bottom_margin = Inches(page_settings.get("bottom_margin", 0.3))
-        section.left_margin = Inches(page_settings.get("left_margin", 0.79))
-        section.right_margin = Inches(page_settings.get("right_margin", 0.33))
-        section.header_distance = Inches(page_settings.get("header_distance", 0))
-        section.footer_distance = Inches(page_settings.get("footer_distance", 0.2))
+        section.page_width = Inches(
+            _coerce_float(page_settings.get("width", 8.5), 8.5, minimum=0)
+        )
+        section.page_height = Inches(
+            _coerce_float(page_settings.get("height", 11), 11, minimum=0)
+        )
+        section.top_margin = Inches(
+            _coerce_float(page_settings.get("top_margin", 0.3), 0.3, minimum=0)
+        )
+        section.bottom_margin = Inches(
+            _coerce_float(page_settings.get("bottom_margin", 0.3), 0.3, minimum=0)
+        )
+        section.left_margin = Inches(
+            _coerce_float(page_settings.get("left_margin", 0.79), 0.79, minimum=0)
+        )
+        section.right_margin = Inches(
+            _coerce_float(page_settings.get("right_margin", 0.33), 0.33, minimum=0)
+        )
+        section.header_distance = Inches(
+            _coerce_float(page_settings.get("header_distance", 0), 0, minimum=0)
+        )
+        section.footer_distance = Inches(
+            _coerce_float(page_settings.get("footer_distance", 0.2), 0.2, minimum=0)
+        )
 
 
 
@@ -75,6 +172,8 @@ def add_page_numbers(doc, profile: Dict[str, Any]):
         return
 
     position = page_numbers_config.get("position", "footer_right")
+    number_format = page_numbers_config.get("format", "PAGE")
+    custom_text = page_numbers_config.get("custom_text", "")
     
     # Determine alignment based on position
     if "right" in position:
@@ -84,21 +183,14 @@ def add_page_numbers(doc, profile: Dict[str, Any]):
     else:
         alignment = WD_ALIGN_PARAGRAPH.LEFT
 
-    for section in doc.sections:
-        footer = section.footer
-        if footer.paragraphs:
-            paragraph = footer.paragraphs[0]
-        else:
-            paragraph = footer.add_paragraph()
-        paragraph.alignment = alignment
-
+    def append_field(paragraph, field_code):
         run = paragraph.add_run()
         fld_char_begin = OxmlElement("w:fldChar")
         fld_char_begin.set(qn("w:fldCharType"), "begin")
 
         instr_text = OxmlElement("w:instrText")
         instr_text.set(qn("xml:space"), "preserve")
-        instr_text.text = " PAGE "
+        instr_text.text = f" {field_code} "
 
         fld_char_separate = OxmlElement("w:fldChar")
         fld_char_separate.set(qn("w:fldCharType"), "separate")
@@ -111,6 +203,92 @@ def add_page_numbers(doc, profile: Dict[str, Any]):
         run._r.append(fld_char_separate)
         run._r.append(fld_char_end)
 
+    for section in doc.sections:
+        try:
+            footer = section.footer
+        except FileNotFoundError:
+            continue
+        if footer.paragraphs:
+            paragraph = footer.paragraphs[0]
+        else:
+            paragraph = footer.add_paragraph()
+        paragraph.alignment = alignment
+
+        if number_format == "PAGE_OF_PAGES":
+            append_field(paragraph, "PAGE")
+            paragraph.add_run(" of ")
+            append_field(paragraph, "NUMPAGES")
+        elif number_format == "custom" and custom_text:
+            parts = re.split(r"(\{PAGE\}|\{NUMPAGES\})", custom_text)
+            for part in parts:
+                if part == "{PAGE}":
+                    append_field(paragraph, "PAGE")
+                elif part == "{NUMPAGES}":
+                    append_field(paragraph, "NUMPAGES")
+                elif part:
+                    paragraph.add_run(part)
+        else:
+            append_field(paragraph, "PAGE")
+
+
+def add_profile_debug_header(doc, profile: Dict[str, Any]):
+    """Write active profile info into the header for debugging."""
+    page = profile.get("page", {})
+    fonts = profile.get("fonts", {})
+    headings = profile.get("headings", {})
+    tables = profile.get("tables", {})
+    paragraph = profile.get("paragraph", {})
+    page_numbers = profile.get("page_numbers", {})
+
+    header_text = (
+        "PROFILE DEBUG: {name} | Page: {w}x{h}in "
+        "Margins: T{mt} B{mb} L{ml} R{mr}in | "
+        "Body: {body_font} {body_size}pt | "
+        "H1: {h1_size}pt {h1_font} | "
+        "Tables: min {minw}in max {maxw}in | "
+        "Paragraph: line {line} before {before}pt after {after}pt | "
+        "PageNumbers: {pn_enabled} {pn_pos} {pn_fmt}"
+    ).format(
+        name=profile.get("name", "default"),
+        w=_coerce_float(page.get("width", 8.5), 8.5, minimum=0),
+        h=_coerce_float(page.get("height", 11), 11, minimum=0),
+        mt=_coerce_float(page.get("top_margin", 0.3), 0.3, minimum=0),
+        mb=_coerce_float(page.get("bottom_margin", 0.3), 0.3, minimum=0),
+        ml=_coerce_float(page.get("left_margin", 0.79), 0.79, minimum=0),
+        mr=_coerce_float(page.get("right_margin", 0.33), 0.33, minimum=0),
+        body_font=fonts.get("body", {}).get("name", "Calibri"),
+        body_size=_coerce_float(fonts.get("body", {}).get("size", 11), 11, minimum=1),
+        h1_size=_coerce_float(headings.get("h1_size", 14), 14, minimum=1),
+        h1_font=fonts.get("heading1", {}).get("name", "Calibri"),
+        minw=_coerce_float(tables.get("min_col_width", 0.35), 0.35, minimum=0.1),
+        maxw=_coerce_float(tables.get("max_col_width", 3.0), 3.0, minimum=0.1),
+        line=_coerce_float(paragraph.get("line_spacing", 1.0), 1.0, minimum=0.1),
+        before=_coerce_float(paragraph.get("space_before", 0), 0, minimum=0),
+        after=_coerce_float(paragraph.get("space_after", 0), 0, minimum=0),
+        pn_enabled=page_numbers.get("enabled", True),
+        pn_pos=page_numbers.get("position", "footer_right"),
+        pn_fmt=page_numbers.get("format", "PAGE"),
+    )
+
+    # Insert at top of document body for visibility
+    if doc.paragraphs:
+        first_para = doc.paragraphs[0]
+        debug_para = first_para.insert_paragraph_before(header_text)
+    else:
+        debug_para = doc.add_paragraph(header_text)
+    for run in debug_para.runs:
+        run.font.size = Pt(8)
+
+    # Also write to header (best effort)
+    for section in doc.sections:
+        try:
+            header = section.header
+        except FileNotFoundError:
+            continue
+        paragraph = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
+        paragraph.text = header_text
+        for run in paragraph.runs:
+            run.font.size = Pt(8)
 
 
 def apply_heading_sizes(doc, profile: Dict[str, Any]):
@@ -121,33 +299,85 @@ def apply_heading_sizes(doc, profile: Dict[str, Any]):
         profile: Profile dictionary
     """
     headings_config = profile.get("headings", {})
+    fonts_config = profile.get("fonts", {})
+    body_font_name = fonts_config.get("body", {}).get("name", "Calibri")
     
     heading_sizes = {
-        "Heading 1": headings_config.get("h1_size", 14),
-        "Heading 2": headings_config.get("h2_size", 12),
-        "Heading 3": headings_config.get("h3_size", 11),
-        "Heading 4": headings_config.get("h4_size", 10),
-        "Heading 5": headings_config.get("h5_size", 9),
-        "Heading 6": headings_config.get("h6_size", 9),
+        "Heading 1": _coerce_float(headings_config.get("h1_size", 14), 14, minimum=1),
+        "Heading 2": _coerce_float(headings_config.get("h2_size", 12), 12, minimum=1),
+        "Heading 3": _coerce_float(headings_config.get("h3_size", 11), 11, minimum=1),
+        "Heading 4": _coerce_float(headings_config.get("h4_size", 10), 10, minimum=1),
+        "Heading 5": _coerce_float(headings_config.get("h5_size", 9), 9, minimum=1),
+        "Heading 6": _coerce_float(headings_config.get("h6_size", 9), 9, minimum=1),
     }
 
     bold = headings_config.get("bold", True)
+
+    heading_fonts = {
+        "Heading 1": fonts_config.get("heading1", {}).get("name", body_font_name),
+        "Heading 2": fonts_config.get("heading2", {}).get("name", body_font_name),
+        "Heading 3": fonts_config.get("heading3", {}).get("name", body_font_name),
+        "Heading 4": fonts_config.get("heading4", {}).get("name", body_font_name),
+        "Heading 5": fonts_config.get("heading5", {}).get("name", body_font_name),
+        "Heading 6": fonts_config.get("heading6", {}).get("name", body_font_name),
+    }
 
     for style_name, size_pt in heading_sizes.items():
         if style_name in doc.styles:
             style = doc.styles[style_name]
             if style and style.font:
+                font_name = heading_fonts.get(style_name, body_font_name)
                 style.font.size = Pt(size_pt)
+                style.font.name = font_name
                 if bold:
                     style.font.bold = True
+                if style.element.rPr is None:
+                    style.element.get_or_add_rPr()
+                rFonts = style.element.rPr.find(qn("w:rFonts"))
+                if rFonts is None:
+                    rFonts = OxmlElement("w:rFonts")
+                    style.element.rPr.append(rFonts)
+                rFonts.set(qn("w:ascii"), font_name)
+                rFonts.set(qn("w:hAnsi"), font_name)
+                rFonts.set(qn("w:cs"), font_name)
 
     for paragraph in doc.paragraphs:
         if paragraph.style and paragraph.style.name in heading_sizes:
             size_pt = heading_sizes[paragraph.style.name]
+            font_name = heading_fonts.get(paragraph.style.name, body_font_name)
             for run in paragraph.runs:
                 run.font.size = Pt(size_pt)
+                run.font.name = font_name
                 if bold:
                     run.bold = True
+                if run._element.rPr is None:
+                    run._element.get_or_add_rPr()
+                rFonts = run._element.rPr.find(qn("w:rFonts"))
+                if rFonts is None:
+                    rFonts = OxmlElement("w:rFonts")
+                    run._element.rPr.append(rFonts)
+                rFonts.set(qn("w:ascii"), font_name)
+                rFonts.set(qn("w:hAnsi"), font_name)
+                rFonts.set(qn("w:cs"), font_name)
+
+
+def apply_paragraph_formatting(doc, profile: Dict[str, Any]):
+    """Apply paragraph spacing settings based on profile."""
+    paragraph_config = profile.get("paragraph", {})
+    line_spacing = _coerce_float(paragraph_config.get("line_spacing", 1.0), 1.0, minimum=0.1)
+    space_before = _coerce_float(paragraph_config.get("space_before", 0), 0, minimum=0)
+    space_after = _coerce_float(paragraph_config.get("space_after", 0), 0, minimum=0)
+
+    if "Normal" in doc.styles:
+        style = doc.styles["Normal"]
+        style.paragraph_format.line_spacing = line_spacing
+        style.paragraph_format.space_before = Pt(space_before)
+        style.paragraph_format.space_after = Pt(space_after)
+
+    for paragraph in doc.paragraphs:
+        paragraph.paragraph_format.line_spacing = line_spacing
+        paragraph.paragraph_format.space_before = Pt(space_before)
+        paragraph.paragraph_format.space_after = Pt(space_after)
 
 
 
@@ -168,41 +398,26 @@ def format_tables(doc, profile: Dict[str, Any]):
     table_header_font = fonts_config.get("table_header", {})
     table_body_font = fonts_config.get("table_body", {})
     
-    header_font_size = Pt(table_header_font.get("size", 10))
-    body_font_size = Pt(table_body_font.get("size", 10))
+    header_font_size = Pt(_coerce_float(table_header_font.get("size", 10), 10, minimum=1))
+    body_font_size = Pt(_coerce_float(table_body_font.get("size", 10), 10, minimum=1))
     
     # Table settings
     header_bold = tables_config.get("header_bold", True)
     header_center = tables_config.get("header_center", True)
-    min_col_width = Inches(tables_config.get("min_col_width", 0.35))
-    max_col_width = Inches(tables_config.get("max_col_width", 3.0))
+    min_col_width = Inches(
+        _coerce_float(tables_config.get("min_col_width", 0.35), 0.35, minimum=0.1)
+    )
+    max_col_width = Inches(
+        _coerce_float(tables_config.get("max_col_width", 3.0), 3.0, minimum=0.1)
+    )
+    auto_width = tables_config.get("auto_width", True)
 
     section = doc.sections[0]
     available_width = section.page_width - section.left_margin - section.right_margin
 
     for table in doc.tables:
-        rows_count = len(table.rows)
-        cols_count = len(table.columns)
-
-        if cols_count >= 6:
-            min_col_width_local = Inches(0.35)
-            max_col_width_local = Inches(2.6)
-            table_font_size = Pt(10)
-        elif rows_count >= 6:
-            min_col_width_local = Inches(0.45)
-            max_col_width_local = Inches(3.0)
-            table_font_size = body_font_size
-        elif cols_count == 2:
-            min_col_width_local = Inches(0.5)
-            max_col_width_local = Inches(3.2)
-            table_font_size = Pt(11)
-        else:
-            min_col_width_local = min_col_width
-            max_col_width_local = max_col_width
-            table_font_size = body_font_size
-
         table.style = "Table"
-        table.autofit = False
+        table.autofit = not auto_width
         set_table_borders(table, tables_config)
 
         header_row = table.rows[0] if table.rows else None
@@ -217,7 +432,7 @@ def format_tables(doc, profile: Dict[str, Any]):
                             if header_bold:
                                 run.bold = True
                         else:
-                            run.font.size = table_font_size
+                            run.font.size = body_font_size
                     if header_row and row_index == 0 and header_center:
                         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 if header_row and row_index == 0:
@@ -227,9 +442,10 @@ def format_tables(doc, profile: Dict[str, Any]):
             normalize_header_labels(header_row)
 
         align_table_columns(table)
-        adjust_table_column_widths(
-            table, available_width, min_col_width_local, max_col_width_local, header_row
-        )
+        if auto_width:
+            adjust_table_column_widths(
+                table, available_width, min_col_width, max_col_width, header_row
+            )
 
 
 

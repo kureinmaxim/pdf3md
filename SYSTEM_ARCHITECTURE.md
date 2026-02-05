@@ -1,11 +1,11 @@
 # PDF3MD System Architecture
 
-> **Document Version:** 1.1.0
-> **Date:** 2026-01-31
+> **Document Version:** 1.2.0
+> **Date:** 2026-02-05
 
 ## 📋 Overview
 
-**PDF3MD** is a hybrid web/desktop application designed for high-fidelity conversion of PDF documents to Markdown and Markdown to Microsoft Word (DOCX). It leverages a modern React frontend for a responsive user interface and a Python Flask backend for robust document processing.
+**PDF3MD** is a hybrid web/desktop application designed for high-fidelity conversion of PDF documents to Markdown and Markdown to Microsoft Word (DOCX). It leverages a modern React frontend for a responsive user interface and a Python Flask backend for robust document processing. The desktop build runs the backend locally and opens the UI in the system browser.
 
 ---
 
@@ -18,7 +18,7 @@
 | **PDF Engine** | PyMuPDF4LLM | Advanced PDF extraction focusing on structure preservation. |
 | **DOCX Engine** | Pandoc + python-docx | Universal document converter with post-processing for Word output. |
 | **Packaging** | Docker | Containerized deployment for consistent environments. |
-| **Desktop** | PyInstaller (macOS/Windows) | Bundles backend as a standalone executable. |
+| **Desktop** | PyInstaller (macOS/Windows) | Bundles backend as a standalone executable with bundled Pandoc. |
 | **Installer** | DMG (macOS) / Inno Setup (Windows) | Creates native installers for each platform. |
 
 ---
@@ -29,15 +29,28 @@
 pdf3md/
 ├── pdf3md/                 # Main Application Source
 │   ├── app.py              # Flask Backend Entry Point & API
+│   ├── converters/         # PDF/DOCX conversion utilities
+│   ├── formatters/         # DOCX Formatting Logic
+│   │   ├── docx_formatter.py   # Core formatting functions
+│   │   ├── profile_manager.py  # Profile CRUD & Management
+│   │   └── profile_schema.py   # Profile Validation & Defaults
+│   ├── utils/              # Shared utilities (pandoc, version, files)
 │   ├── src/                # React Frontend Source
 │   │   ├── App.jsx         # Main UI Component
-│   │   ├── components/     # UI Components (Sidebar, MultiFileUploadStatus)
+│   │   ├── components/     # UI Components
+│   │   │   ├── ProfileSelector.jsx # Profile Dropdown
+│   │   │   ├── ProfileManager.jsx  # Profile Management Modal
+│   │   │   └── ProfileEditor.jsx   # Profile Editing Form
+│   │   ├── api/            # API Clients
+│   │   │   └── profileApi.js       # Profile API Wrapper
 │   │   └── main.jsx        # Entry point
 │   ├── public/             # Static assets (favicons, etc.)
 │   ├── vite.config.js      # Vite Configuration (Proxy setup)
 │   ├── version.json        # Version info for frontend
 │   ├── build_meta.json     # Build metadata (generated)
-│   └── requirements.txt    # Backend Dependencies
+│   ├── requirements.txt    # Backend Dependencies
+│   ├── start_server.sh     # Local dev server helper
+│   └── stop_server.sh      # Local dev server helper
 ├── macos/                  # macOS Build Tools
 │   ├── build_app.sh        # Script to build macOS .app bundle
 │   ├── build_dmg.sh        # Script to build macOS .dmg installer
@@ -67,17 +80,20 @@ The system operates as a client-server architecture, which can run either distri
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   Browser / Electron UI                     │
+│                   Browser UI (Local)                        │
 │               React + Vite (Frontend)                       │
 │                                                             │
 │   [Upload Zone] <---> [Status Monitor] <---> [Download/Edit]│
-└───────────┬───────────────────▲─────────────────────────────┘
+│                                                     ^       │
+│                                                     |       │
+│                                            [Profile Manager]│
+└───────────┬───────────────────▲─────────────────────┼───────┘
             │ HTTP POST /convert│ Polling /progress/<id>
-            │                   │
-┌───────────▼───────────────────┴─────────────────────────────┐
-│                   Backend Service                           │
-│                Flask API (Port 6201)                        │
-│                                                             │
+            │                   │ /api/profiles/*
+┌───────────▼───────────────────┴─────────────────────▼───────┐
+            │                   Backend Service               │
+            │                Flask API (Port 6201)            │
+            │                                                 │
 │  ┌─────────────────┐       ┌──────────────────────────┐     │
 │  │  PyMuPDF4LLM    │       │        Pandoc            │     │
 │  │ (PDF -> MD)     │       │ (MD -> DOCX)             │     │
@@ -85,24 +101,34 @@ The system operates as a client-server architecture, which can run either distri
 │           │                             │                   │
 └───────────┼─────────────────────────────┼───────────────────┘
             │ File System Operations      │
-      ┌─────▼──────┐                ┌─────▼──────┐
-      │  Temp Storage│              │  Temp Storage│
-      │  (Uploads)   │              │  (Outputs)   │
-      └────────────┘                └────────────┘
+      ┌─────▼──────┐                ┌─────▼──────┐    ┌───────▼──────┐
+      │  Temp Storage│              │  Temp Storage│    │  User Config │
+      │  (Uploads)   │              │  (Outputs)   │    │  (Profiles)  │
+      └────────────┘                └────────────┘    └──────────────┘
 ```
 
 ### Key Interactions
 
-1.  **Frontend**: Serves the UI. In production, these are static files served by Flask or Nginx. In dev, served by Vite.
+1.  **Frontend**: Serves the UI. In production, static files are served by the Flask backend or Nginx. In dev, served by Vite. Includes Profile Manager UI.
 2.  **API Layer**: Flask exposes endpoints:
     *   `/convert`: Accepts PDF uploads, returns conversion ID for progress tracking.
-    *   `/convert-markdown-to-word`: Accepts MD content, returns DOCX binary.
+    *   `/convert-markdown-to-word`: Accepts MD content and optional `profile`, returns DOCX binary.
     *   `/convert-word-to-markdown`: Accepts DOCX uploads, returns Markdown.
     *   `/progress/<id>`: Returns status of long-running tasks.
+    *   `/api/profiles`: CRUD endpoints for managing DOCX formatting profiles.
     *   `/version`: Returns version info and build metadata.
 3.  **Processing Layer**:
     *   **PDF Processing**: Uses `PyMuPDF4LLM` to extract text and layout analysis to generate Markdown.
-    *   **Word Conversion**: Pipes Markdown through `Pandoc` then applies post-processing with `python-docx` for formatting (margins, headers, tables, page numbers).
+    *   **Word Conversion**: Pipes Markdown through `Pandoc` then applies post-processing with `python-docx` using the selected **Formatting Profile** (margins, fonts, headings, tables, page numbers, paragraph spacing).
+
+### DOCX Formatting Profiles
+
+The system includes a robust profiling system for customizing DOCX output:
+
+*   **Storage**: Profiles are stored as JSON files in a user-accessible directory (see Platform-Specific Paths).
+*   **Schema**: Each profile defines settings for Page Setup, Fonts, Headings, Tables, Page Numbers, and Paragraph spacing.
+*   **Default Profile**: A built-in default profile ensures backward compatibility and serves as a template.
+*   **Manager**: A singleton `ProfileManager` handles loading, saving, validation, and merging of profiles.
 
 ---
 
@@ -117,10 +143,12 @@ The system operates as a client-server architecture, which can run either distri
 
 ### 2. Markdown to Word Conversion
 
-1.  **Input**: User edits Markdown in the UI editor.
-2.  **Request**: User clicks "Convert to Word". Frontend sends `POST /convert-markdown-to-word`.
-3.  **Conversion**: Backend invokes `pypandoc` to convert string buffer to DOCX bytes.
-4.  **Download**: Backend returns the binary stream. Browser triggers file download.
+1.  **Input**: User edits Markdown in the UI editor and selects a **Formatting Profile**.
+2.  **Request**: User clicks "Convert to Word". Frontend sends `POST /convert-markdown-to-word` with markdown content and profile name.
+3.  **Profile Loading**: Backend loads the selected profile JSON. If not found, uses default.
+4.  **Conversion**: Backend invokes `pypandoc` to convert text to DOCX.
+5.  **Formatting**: `docx_formatter` applies profile settings (margins, fonts, etc.) to the generated DOCX.
+6.  **Download**: Backend returns the binary stream. Browser triggers file download.
 
 ---
 
@@ -132,8 +160,8 @@ Uses two containers:
 *   `frontend`: Nginx serving the built React static files.
 
 ### Desktop App (Standalone)
-*   **macOS**: `macos/build_dmg.sh` uses PyInstaller to bundle Python+Flask into a single Unix executable, wrapped in a `.app` bundle with bundled Pandoc.
-*   **Windows**: `windows/installer.iss` compiles a `.exe` installer that deploys the Python environment and sets up the application shortcuts.
+*   **macOS**: `macos/build_dmg.sh` uses PyInstaller to bundle Python+Flask into a single executable, wrapped in a `.app` bundle with bundled Pandoc and app template assets. `launcher.sh` copies the built frontend to `~/Library/Application Support/PDF3MD/app` and sets `PDF3MD_STATIC_DIR`.
+*   **Windows**: `windows/installer.iss` compiles a `.exe` installer that deploys the Python environment and sets up application shortcuts.
 
 ---
 
@@ -145,6 +173,7 @@ The application uses platform-specific directories for data storage:
 |---------|---------|-------|-------|
 | **Pandoc** | `%LOCALAPPDATA%\PDF3MD\pandoc\` | `~/Library/Application Support/PDF3MD/pandoc/` | `~/.local/share/PDF3MD/pandoc/` |
 | **Logs** | `%LOCALAPPDATA%\PDF3MD\logs\` | `~/Library/Logs/PDF3MD/` | `~/.local/share/PDF3MD/logs/` |
+| **Profiles** | `%USERPROFILE%\.pdf3md\profiles\` | `~/.pdf3md/profiles/` | `~/.pdf3md/profiles/` |
 | **App Data** | `%LOCALAPPDATA%\PDF3MD\app\` | `~/Library/Application Support/PDF3MD/app/` | `~/.local/share/PDF3MD/app/` |
 
 ### Pandoc Auto-Download
@@ -165,11 +194,11 @@ Version information is centralized in `pyproject.toml`:
 ```toml
 [project]
 name = "pdf3md"
-version = "0.1.1"
+version = "1.0.3"
 
 [tool.pdf3md]
-release_date = "2026-01-31"
-developer = "Developer Name"
+release_date = "2026-02-05"
+developer = "Kurein Maxim"
 ```
 
 Build metadata is generated during build process via `scripts/build_meta.py` and stored in `pdf3md/build_meta.json`.

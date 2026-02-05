@@ -3,6 +3,7 @@
 import os
 import json
 import logging
+import hashlib
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
@@ -40,7 +41,7 @@ class ProfileManager:
         """Ensure the default profile file exists."""
         default_path = self.storage_dir / "default.json"
         if not default_path.exists():
-            self.save_profile(DEFAULT_PROFILE)
+            self.save_profile(DEFAULT_PROFILE, allow_overwrite=True, allow_default=True)
             logger.info("Created default profile")
 
     def _get_profile_path(self, name: str) -> Path:
@@ -52,10 +53,46 @@ class ProfileManager:
         Returns:
             Path to profile file
         """
-        # Sanitize filename
+        if name.strip().lower() == "default":
+            return self.storage_dir / "default.json"
+
+        # Sanitize filename and add hash to avoid collisions
         safe_name = "".join(c for c in name if c.isalnum() or c in (" ", "-", "_"))
-        safe_name = safe_name.lower().replace(" ", "_")
+        safe_name = safe_name.lower().replace(" ", "_").strip("_")
+        name_hash = hashlib.sha1(name.encode("utf-8")).hexdigest()[:8]
+        return self.storage_dir / f"{safe_name}-{name_hash}.json"
+
+    def _get_legacy_profile_path(self, name: str) -> Path:
+        """Get legacy file path without hash (for backward compatibility)."""
+        safe_name = "".join(c for c in name if c.isalnum() or c in (" ", "-", "_"))
+        safe_name = safe_name.lower().replace(" ", "_").strip("_")
         return self.storage_dir / f"{safe_name}.json"
+
+    def _find_profile_file_by_name(self, name: str) -> Optional[Path]:
+        """Find a profile file by name (case-insensitive)."""
+        target = name.strip().lower()
+        if not target:
+            return None
+
+        for profile_file in self.storage_dir.glob("*.json"):
+            try:
+                with open(profile_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                existing_name = data.get("name", profile_file.stem)
+                if isinstance(existing_name, str) and existing_name.strip().lower() == target:
+                    return profile_file
+            except Exception as e:
+                logger.error(f"Error reading profile {profile_file}: {e}")
+
+        legacy_path = self._get_legacy_profile_path(name)
+        if legacy_path.exists():
+            return legacy_path
+
+        return None
+
+    def profile_exists(self, name: str) -> bool:
+        """Check whether a profile exists by name."""
+        return self._find_profile_file_by_name(name) is not None
 
     def list_profiles(self) -> List[Dict[str, Any]]:
         """List all available profiles.
@@ -92,7 +129,7 @@ class ProfileManager:
         Returns:
             Profile dictionary, or None if not found
         """
-        profile_path = self._get_profile_path(name)
+        profile_path = self._find_profile_file_by_name(name) or self._get_profile_path(name)
 
         if not profile_path.exists():
             logger.warning(f"Profile not found: {name}")
@@ -103,7 +140,7 @@ class ProfileManager:
                 profile_data = json.load(f)
 
             # Validate
-            is_valid, error = validate_profile(profile_data)
+            is_valid, error = validate_profile(profile_data, strict=False)
             if not is_valid:
                 logger.error(f"Invalid profile '{name}': {error}")
                 return None
@@ -118,7 +155,12 @@ class ProfileManager:
             logger.error(f"Error loading profile '{name}': {e}")
             return None
 
-    def save_profile(self, profile_data: Dict[str, Any]) -> bool:
+    def save_profile(
+        self,
+        profile_data: Dict[str, Any],
+        allow_overwrite: bool = True,
+        allow_default: bool = False,
+    ) -> bool:
         """Save a profile.
 
         Args:
@@ -137,8 +179,16 @@ class ProfileManager:
         if not name:
             logger.error("Profile must have a name")
             return False
+        if name.strip().lower() == "default" and not allow_default:
+            logger.warning("Cannot overwrite default profile")
+            return False
 
-        profile_path = self._get_profile_path(name)
+        existing_path = self._find_profile_file_by_name(name)
+        if existing_path and not allow_overwrite:
+            logger.warning(f"Profile already exists: {name}")
+            return False
+
+        profile_path = existing_path or self._get_profile_path(name)
 
         try:
             with open(profile_path, "w", encoding="utf-8") as f:
@@ -165,9 +215,9 @@ class ProfileManager:
             logger.warning("Cannot delete default profile")
             return False
 
-        profile_path = self._get_profile_path(name)
+        profile_path = self._find_profile_file_by_name(name)
 
-        if not profile_path.exists():
+        if not profile_path or not profile_path.exists():
             logger.warning(f"Profile not found: {name}")
             return False
 

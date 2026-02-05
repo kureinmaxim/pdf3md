@@ -1,10 +1,10 @@
 {
-  "version": "1.0.1",
-  "release_date": "2026-02-04",
+  "version": "1.0.3",
+  "release_date": "2026-02-05",
   "developer": "Kurein Maxim",
-  "git_commit": "163eedf",
-  "git_branch": "refactoring",
-  "git_describe": "163eedf",
+  "git_commit": "4355fd8",
+  "git_branch": "main",
+  "git_describe": "v1.0.1-2-g4355fd8",
   "git_dirty": true,
-  "generated_at": "2026-02-04T16:42:42.341789Z"
+  "generated_at": "2026-02-05T07:41:26.739468Z"
 }

@@ -8,6 +8,14 @@
 
 PDF3MD is a powerful web application for converting PDF documents into well-structured Markdown and DOCX formats. Features a modern React frontend with Python Flask backend, providing real-time progress tracking and a seamless user experience.
 
+## Port Matrix
+
+| Mode | Frontend | Backend API |
+|------|----------|-------------|
+| Desktop app (macOS/Windows) | `http://localhost:6201` | `http://localhost:6201` |
+| Docker (prod) | `http://localhost:3000` | `http://localhost:6201` |
+| Manual dev | `http://localhost:5173` | `http://localhost:6201` |
+
 ![PDF3MD Screenshot](imgs/img1.png)
 ![PDF3MD Conversion](imgs/img2.png)
 
@@ -50,7 +58,7 @@ Choose the method that works best for you:
    ```
 2. Double-click `PDF3MD.exe` - browser opens automatically!
 
-> 💡 **What happens:** The app starts both backend and frontend servers, then opens your browser to `http://localhost:6201`
+> 💡 **What happens:** The app starts the backend server and serves the frontend from it, then opens your browser to `http://localhost:6201`
 
 ---
 
@@ -108,7 +116,7 @@ Choose the method that works best for you:
    ```
 
 3. Open in browser:
-   - Frontend: `http://localhost:3000`
+   - Frontend (Docker): `http://localhost:3000`
    - Backend API: `http://localhost:6201`
 
 #### Using Helper Script
@@ -155,8 +163,8 @@ chmod +x docker-start.sh
    ```
 
 4. **Open browser:**
-   - Dev mode: `http://localhost:5173`
-   - Production: `http://localhost:6201`
+   - Dev mode (Vite): `http://localhost:5173`
+   - Production build served by backend: `http://localhost:6201`
 
 ---
 
@@ -231,13 +239,14 @@ chmod +x docker-start.sh
 
 ### Ports
 
-- **Frontend:** 3000 (production), 5173 (development)
-- **Backend:** 6201 (Flask API)
+- **Desktop app (macOS/Windows):** `http://localhost:6201` (backend serves frontend)
+- **Docker prod:** Frontend `http://localhost:3000`, Backend API `http://localhost:6201`
+- **Development (manual):** Frontend `http://localhost:5173`, Backend API `http://localhost:6201`
 
 ### Network Access
 
-- **Localhost:** Access at `http://localhost:3000`
-- **LAN:** Access from other devices at `http://<host-ip>:3000`
+- **Localhost:** Docker frontend `http://localhost:3000`, desktop/prod backend UI `http://localhost:6201`
+- **LAN (Docker):** Access from other devices at `http://<host-ip>:3000`
   - Ensure firewall allows port 6201 for backend API
   - Frontend automatically connects to backend on same host
 

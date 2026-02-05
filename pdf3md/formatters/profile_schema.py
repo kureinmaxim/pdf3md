@@ -61,7 +61,9 @@ DEFAULT_PROFILE = {
 }
 
 
-def validate_profile(profile_data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
+def validate_profile(
+    profile_data: Dict[str, Any], strict: bool = True
+) -> tuple[bool, Optional[str]]:
     """Validate a profile dictionary against required schema.
 
     Args:
@@ -75,11 +77,16 @@ def validate_profile(profile_data: Dict[str, Any]) -> tuple[bool, Optional[str]]
     # Check required top-level fields
     for field in required_fields:
         if field not in profile_data:
-            return False, f"Missing required field: {field}"
+            if strict:
+                return False, f"Missing required field: {field}"
+            continue
 
     # Validate name
     if not isinstance(profile_data["name"], str) or not profile_data["name"].strip():
         return False, "Profile name must be a non-empty string"
+
+    def _is_number(value: Any) -> bool:
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
 
     # Validate page settings
     page = profile_data.get("page", {})
@@ -93,29 +100,52 @@ def validate_profile(profile_data: Dict[str, Any]) -> tuple[bool, Optional[str]]
     ]
     for field in required_page_fields:
         if field not in page:
-            return False, f"Missing required page field: {field}"
-        if not isinstance(page[field], (int, float)) or page[field] < 0:
+            if strict:
+                return False, f"Missing required page field: {field}"
+            continue
+        if not _is_number(page[field]) or page[field] < 0:
             return False, f"Invalid page.{field}: must be a positive number"
 
     # Validate fonts
     fonts = profile_data.get("fonts", {})
-    required_fonts = ["body", "heading1", "table_header", "table_body"]
+    required_fonts = [
+        "body",
+        "heading1",
+        "heading2",
+        "heading3",
+        "heading4",
+        "heading5",
+        "heading6",
+        "table_header",
+        "table_body",
+    ]
     for font_key in required_fonts:
         if font_key not in fonts:
-            return False, f"Missing required font: {font_key}"
+            if strict:
+                return False, f"Missing required font: {font_key}"
+            continue
         font = fonts[font_key]
         if "name" not in font or "size" not in font:
             return False, f"Font '{font_key}' missing 'name' or 'size'"
-        if not isinstance(font["size"], (int, float)) or font["size"] <= 0:
+        if not _is_number(font["size"]) or font["size"] <= 0:
             return False, f"Font '{font_key}' size must be positive"
 
     # Validate headings
     headings = profile_data.get("headings", {})
-    required_heading_fields = ["h1_size", "h2_size", "h3_size"]
+    required_heading_fields = [
+        "h1_size",
+        "h2_size",
+        "h3_size",
+        "h4_size",
+        "h5_size",
+        "h6_size",
+    ]
     for field in required_heading_fields:
         if field not in headings:
-            return False, f"Missing required heading field: {field}"
-        if not isinstance(headings[field], (int, float)) or headings[field] <= 0:
+            if strict:
+                return False, f"Missing required heading field: {field}"
+            continue
+        if not _is_number(headings[field]) or headings[field] <= 0:
             return False, f"Invalid headings.{field}: must be positive"
 
     # Validate tables
@@ -123,6 +153,43 @@ def validate_profile(profile_data: Dict[str, Any]) -> tuple[bool, Optional[str]]
     if "border_width" in tables:
         if not isinstance(tables["border_width"], int) or tables["border_width"] < 0:
             return False, "tables.border_width must be a non-negative integer"
+    if "min_col_width" in tables:
+        if not _is_number(tables["min_col_width"]) or tables["min_col_width"] <= 0:
+            return False, "tables.min_col_width must be positive"
+    if "max_col_width" in tables:
+        if not _is_number(tables["max_col_width"]) or tables["max_col_width"] <= 0:
+            return False, "tables.max_col_width must be positive"
+    if "auto_width" in tables and not isinstance(tables["auto_width"], bool):
+        return False, "tables.auto_width must be boolean"
+
+    # Validate paragraph settings
+    paragraph = profile_data.get("paragraph", {})
+    if "line_spacing" in paragraph:
+        if not _is_number(paragraph["line_spacing"]) or paragraph["line_spacing"] <= 0:
+            return False, "paragraph.line_spacing must be positive"
+    for field in ["space_before", "space_after"]:
+        if field in paragraph:
+            if not _is_number(paragraph[field]) or paragraph[field] < 0:
+                return False, f"paragraph.{field} must be non-negative"
+
+    # Validate page numbers
+    page_numbers = profile_data.get("page_numbers", {})
+    if "enabled" in page_numbers and not isinstance(page_numbers["enabled"], bool):
+        return False, "page_numbers.enabled must be boolean"
+    if "position" in page_numbers:
+        if page_numbers["position"] not in [
+            "footer_left",
+            "footer_center",
+            "footer_right",
+        ]:
+            return False, "page_numbers.position is invalid"
+    if "format" in page_numbers:
+        if page_numbers["format"] not in ["PAGE", "PAGE_OF_PAGES", "custom"]:
+            return False, "page_numbers.format is invalid"
+    if "custom_text" in page_numbers and not isinstance(
+        page_numbers["custom_text"], str
+    ):
+        return False, "page_numbers.custom_text must be string"
 
     return True, None
 

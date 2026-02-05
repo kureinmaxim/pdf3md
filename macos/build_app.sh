@@ -116,6 +116,7 @@ PYINSTALLER_ARGS=(
   --distpath "$DIST_DIR/pyinstaller"
   --workpath "$DIST_DIR/pyinstaller/build"
   --specpath "$DIST_DIR/pyinstaller"
+  --collect-data docx
   --hidden-import=pdf3md
   --hidden-import=pdf3md.config
   --hidden-import=pdf3md.utils
@@ -132,6 +133,20 @@ PYINSTALLER_ARGS=(
   --add-data "$ROOT_DIR/pdf3md/version.json:."
   --add-data "$ROOT_DIR/pdf3md/build_meta.json:."
 )
+
+# Bundle python-docx templates (required for header/footer operations)
+DOCX_TEMPLATES_DIR="$("$BUILD_VENV/bin/python3" - <<'PY'
+import pathlib
+import docx
+
+templates_dir = pathlib.Path(docx.__file__).parent / "templates"
+print(str(templates_dir))
+PY
+)"
+
+if [ -d "$DOCX_TEMPLATES_DIR" ]; then
+  PYINSTALLER_ARGS+=(--add-data "$DOCX_TEMPLATES_DIR:docx/templates")
+fi
 
 # Add Pandoc if available
 if [ -d "$DIST_DIR/pandoc" ]; then

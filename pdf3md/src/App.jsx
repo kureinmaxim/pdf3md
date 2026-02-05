@@ -34,6 +34,7 @@ function App() {
   const [showAbout, setShowAbout] = useState(false)
   const [selectedProfile, setSelectedProfile] = useState('default')
   const [showProfileManager, setShowProfileManager] = useState(false)
+  const [profilesVersion, setProfilesVersion] = useState(0)
   const showGitMeta = !import.meta.env.PROD
   const showBuildTime = !import.meta.env.PROD
   const fileInputRef = useRef(null)
@@ -723,6 +724,7 @@ function App() {
                       <p>Type or paste your Markdown text below and convert it to a Word document</p>
                     </div>
                     <ProfileSelector
+                      key={profilesVersion}
                       selectedProfile={selectedProfile}
                       onProfileChange={setSelectedProfile}
                       onManageClick={() => setShowProfileManager(true)}
@@ -926,7 +928,7 @@ function App() {
         isOpen={showProfileManager}
         onClose={() => setShowProfileManager(false)}
         onProfilesChanged={() => {
-          // Force re-render of ProfileSelector by changing key or state
+          setProfilesVersion(v => v + 1)
         }}
       />
     </>

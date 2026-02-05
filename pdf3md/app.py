@@ -313,13 +313,21 @@ def create_profile():
         if not data:
             return jsonify({"error": "No profile data provided"}), 400
         
+        name = data.get("name", "").strip()
+        if not name:
+            return jsonify({"error": "Profile name is required"}), 400
+        if name.lower() == "default":
+            return jsonify({"error": "Cannot overwrite default profile"}), 403
+        
         # Validate profile
         is_valid, error_message = validate_profile(data)
         if not is_valid:
             return jsonify({"error": f"Invalid profile: {error_message}"}), 400
         
         profile_manager = get_profile_manager()
-        success = profile_manager.save_profile(data)
+        if profile_manager.profile_exists(name):
+            return jsonify({"error": "Profile already exists"}), 409
+        success = profile_manager.save_profile(data, allow_overwrite=False)
         
         if success:
             return jsonify({"message": f"Profile '{data.get('name')}' saved successfully"}), 200
@@ -339,6 +347,8 @@ def update_profile(profile_name):
         
         if not data:
             return jsonify({"error": "No profile data provided"}), 400
+        if profile_name.lower() == "default":
+            return jsonify({"error": "Cannot overwrite default profile"}), 403
         
         # Ensure name matches
         data["name"] = profile_name
@@ -349,7 +359,9 @@ def update_profile(profile_name):
             return jsonify({"error": f"Invalid profile: {error_message}"}), 400
         
         profile_manager = get_profile_manager()
-        success = profile_manager.save_profile(data)
+        if not profile_manager.profile_exists(profile_name):
+            return jsonify({"error": f"Profile '{profile_name}' not found"}), 404
+        success = profile_manager.save_profile(data, allow_overwrite=True)
         
         if success:
             return jsonify({"message": f"Profile '{profile_name}' updated successfully"}), 200
@@ -387,8 +399,12 @@ def duplicate_profile(profile_name):
         
         if not new_name:
             return jsonify({"error": "New profile name required"}), 400
+        if new_name.strip().lower() == "default":
+            return jsonify({"error": "Cannot overwrite default profile"}), 403
         
         profile_manager = get_profile_manager()
+        if profile_manager.profile_exists(new_name):
+            return jsonify({"error": "Profile already exists"}), 409
         success = profile_manager.duplicate_profile(profile_name, new_name)
         
         if success:

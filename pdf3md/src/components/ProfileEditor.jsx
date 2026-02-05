@@ -71,6 +71,7 @@ function ProfileEditor({ profile, onSave, onCancel }) {
         { id: 'page', label: 'Page Setup', icon: '📄' },
         { id: 'fonts', label: 'Fonts', icon: '🔤' },
         { id: 'headings', label: 'Headings', icon: '📰' },
+        { id: 'paragraph', label: 'Paragraph', icon: '✍️' },
         { id: 'tables', label: 'Tables', icon: '📊' },
         { id: 'pageNumbers', label: 'Page Numbers', icon: '#️⃣' },
     ];
@@ -127,6 +128,7 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                                     <input
                                         type="number"
                                         step="0.1"
+                                        min="0"
                                         value={inchesToCm(formData.page?.width ?? 8.5)}
                                         onChange={(e) => handleChange('page', 'width', cmToInches(toNumber(e.target.value, 0)))}
                                     />
@@ -136,6 +138,7 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                                     <input
                                         type="number"
                                         step="0.1"
+                                        min="0"
                                         value={inchesToCm(formData.page?.height ?? 11)}
                                         onChange={(e) => handleChange('page', 'height', cmToInches(toNumber(e.target.value, 0)))}
                                     />
@@ -149,6 +152,7 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                                     <input
                                         type="number"
                                         step="0.1"
+                                        min="0"
                                         value={inchesToMm(formData.page?.top_margin ?? 0.3)}
                                         onChange={(e) => handleChange('page', 'top_margin', mmToInches(toNumber(e.target.value, 0)))}
                                     />
@@ -158,6 +162,7 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                                     <input
                                         type="number"
                                         step="0.1"
+                                        min="0"
                                         value={inchesToMm(formData.page?.bottom_margin ?? 0.3)}
                                         onChange={(e) => handleChange('page', 'bottom_margin', mmToInches(toNumber(e.target.value, 0)))}
                                     />
@@ -167,6 +172,7 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                                     <input
                                         type="number"
                                         step="0.1"
+                                        min="0"
                                         value={inchesToMm(formData.page?.left_margin ?? 0.79)}
                                         onChange={(e) => handleChange('page', 'left_margin', mmToInches(toNumber(e.target.value, 0)))}
                                     />
@@ -176,6 +182,7 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                                     <input
                                         type="number"
                                         step="0.1"
+                                        min="0"
                                         value={inchesToMm(formData.page?.right_margin ?? 0.33)}
                                         onChange={(e) => handleChange('page', 'right_margin', mmToInches(toNumber(e.target.value, 0)))}
                                     />
@@ -189,6 +196,7 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                                     <input
                                         type="number"
                                         step="0.1"
+                                        min="0"
                                         value={inchesToMm(formData.page?.header_distance ?? 0)}
                                         onChange={(e) => handleChange('page', 'header_distance', mmToInches(toNumber(e.target.value, 0)))}
                                     />
@@ -198,6 +206,7 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                                     <input
                                         type="number"
                                         step="0.1"
+                                        min="0"
                                         value={inchesToMm(formData.page?.footer_distance ?? 0.2)}
                                         onChange={(e) => handleChange('page', 'footer_distance', mmToInches(toNumber(e.target.value, 0)))}
                                     />
@@ -302,6 +311,94 @@ function ProfileEditor({ profile, onSave, onCancel }) {
 
                     {activeTab === 'headings' && (
                         <div className="pe-section">
+                            <h3>Heading Fonts</h3>
+                            <div className="pe-grid three">
+                                <div className="pe-field">
+                                    <label>H1 Font</label>
+                                    <select
+                                        value={formData.fonts?.heading1?.name || 'Calibri'}
+                                        onChange={(e) => handleFontChange('heading1', 'name', e.target.value)}
+                                    >
+                                        <option value="Calibri">Calibri</option>
+                                        <option value="Arial">Arial</option>
+                                        <option value="Times New Roman">Times New Roman</option>
+                                        <option value="Helvetica">Helvetica</option>
+                                        <option value="Georgia">Georgia</option>
+                                        <option value="Verdana">Verdana</option>
+                                    </select>
+                                </div>
+                                <div className="pe-field">
+                                    <label>H2 Font</label>
+                                    <select
+                                        value={formData.fonts?.heading2?.name || 'Calibri'}
+                                        onChange={(e) => handleFontChange('heading2', 'name', e.target.value)}
+                                    >
+                                        <option value="Calibri">Calibri</option>
+                                        <option value="Arial">Arial</option>
+                                        <option value="Times New Roman">Times New Roman</option>
+                                        <option value="Helvetica">Helvetica</option>
+                                        <option value="Georgia">Georgia</option>
+                                        <option value="Verdana">Verdana</option>
+                                    </select>
+                                </div>
+                                <div className="pe-field">
+                                    <label>H3 Font</label>
+                                    <select
+                                        value={formData.fonts?.heading3?.name || 'Calibri'}
+                                        onChange={(e) => handleFontChange('heading3', 'name', e.target.value)}
+                                    >
+                                        <option value="Calibri">Calibri</option>
+                                        <option value="Arial">Arial</option>
+                                        <option value="Times New Roman">Times New Roman</option>
+                                        <option value="Helvetica">Helvetica</option>
+                                        <option value="Georgia">Georgia</option>
+                                        <option value="Verdana">Verdana</option>
+                                    </select>
+                                </div>
+                                <div className="pe-field">
+                                    <label>H4 Font</label>
+                                    <select
+                                        value={formData.fonts?.heading4?.name || 'Calibri'}
+                                        onChange={(e) => handleFontChange('heading4', 'name', e.target.value)}
+                                    >
+                                        <option value="Calibri">Calibri</option>
+                                        <option value="Arial">Arial</option>
+                                        <option value="Times New Roman">Times New Roman</option>
+                                        <option value="Helvetica">Helvetica</option>
+                                        <option value="Georgia">Georgia</option>
+                                        <option value="Verdana">Verdana</option>
+                                    </select>
+                                </div>
+                                <div className="pe-field">
+                                    <label>H5 Font</label>
+                                    <select
+                                        value={formData.fonts?.heading5?.name || 'Calibri'}
+                                        onChange={(e) => handleFontChange('heading5', 'name', e.target.value)}
+                                    >
+                                        <option value="Calibri">Calibri</option>
+                                        <option value="Arial">Arial</option>
+                                        <option value="Times New Roman">Times New Roman</option>
+                                        <option value="Helvetica">Helvetica</option>
+                                        <option value="Georgia">Georgia</option>
+                                        <option value="Verdana">Verdana</option>
+                                    </select>
+                                </div>
+                                <div className="pe-field">
+                                    <label>H6 Font</label>
+                                    <select
+                                        value={formData.fonts?.heading6?.name || 'Calibri'}
+                                        onChange={(e) => handleFontChange('heading6', 'name', e.target.value)}
+                                    >
+                                        <option value="Calibri">Calibri</option>
+                                        <option value="Arial">Arial</option>
+                                        <option value="Times New Roman">Times New Roman</option>
+                                        <option value="Helvetica">Helvetica</option>
+                                        <option value="Georgia">Georgia</option>
+                                        <option value="Verdana">Verdana</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             <h3>Heading Sizes (pt)</h3>
                             <div className="pe-grid three">
                                 <div className="pe-field">
@@ -378,6 +475,47 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                         </div>
                     )}
 
+                    {activeTab === 'paragraph' && (
+                        <div className="pe-section">
+                            <h3>Paragraph Spacing</h3>
+                            <div className="pe-grid three">
+                                <div className="pe-field">
+                                    <label>Line Spacing (x)</label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        min="0.5"
+                                        max="3"
+                                        value={formData.paragraph?.line_spacing ?? 1.0}
+                                        onChange={(e) => handleChange('paragraph', 'line_spacing', toNumber(e.target.value, 1.0))}
+                                    />
+                                </div>
+                                <div className="pe-field">
+                                    <label>Space Before (pt)</label>
+                                    <input
+                                        type="number"
+                                        step="0.5"
+                                        min="0"
+                                        max="72"
+                                        value={formData.paragraph?.space_before ?? 0}
+                                        onChange={(e) => handleChange('paragraph', 'space_before', toNumber(e.target.value, 0))}
+                                    />
+                                </div>
+                                <div className="pe-field">
+                                    <label>Space After (pt)</label>
+                                    <input
+                                        type="number"
+                                        step="0.5"
+                                        min="0"
+                                        max="72"
+                                        value={formData.paragraph?.space_after ?? 0}
+                                        onChange={(e) => handleChange('paragraph', 'space_after', toNumber(e.target.value, 0))}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {activeTab === 'tables' && (
                         <div className="pe-section">
                             <h3>Border Settings</h3>
@@ -441,8 +579,8 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                                     <input
                                         type="number"
                                         step="0.05"
-                                        min="0.1"
-                                        max="2"
+                                        min="0.5"
+                                        max="10"
                                         value={inchesToCm(formData.tables?.min_col_width ?? 0.35)}
                                         onChange={(e) => handleChange('tables', 'min_col_width', cmToInches(toNumber(e.target.value, 0)))}
                                     />
@@ -453,7 +591,7 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                                         type="number"
                                         step="0.1"
                                         min="1"
-                                        max="6"
+                                        max="20"
                                         value={inchesToCm(formData.tables?.max_col_width ?? 3.0)}
                                         onChange={(e) => handleChange('tables', 'max_col_width', cmToInches(toNumber(e.target.value, 0)))}
                                     />
@@ -488,6 +626,28 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                                             <option value="footer_right">Footer Right</option>
                                         </select>
                                     </div>
+                                    <div className="pe-field">
+                                        <label>Format</label>
+                                        <select
+                                            value={formData.page_numbers?.format || 'PAGE'}
+                                            onChange={(e) => handleChange('page_numbers', 'format', e.target.value)}
+                                        >
+                                            <option value="PAGE">Page</option>
+                                            <option value="PAGE_OF_PAGES">Page of Pages</option>
+                                            <option value="custom">Custom</option>
+                                        </select>
+                                    </div>
+                                    {formData.page_numbers?.format === 'custom' && (
+                                        <div className="pe-field">
+                                            <label>Custom Text</label>
+                                            <input
+                                                type="text"
+                                                value={formData.page_numbers?.custom_text || ''}
+                                                onChange={(e) => handleChange('page_numbers', 'custom_text', e.target.value)}
+                                                placeholder="Use {PAGE} and {NUMPAGES}"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

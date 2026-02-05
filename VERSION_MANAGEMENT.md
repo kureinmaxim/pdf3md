@@ -51,6 +51,23 @@ python3 scripts/update_version.py bump major
 python3 scripts/update_version.py release
 ```
 
+**Windows (PowerShell):**
+
+```powershell
+# Activate virtual environment first
+.\venv\Scripts\Activate.ps1
+
+# Version management
+python scripts/update_version.py status
+python scripts/update_version.py sync
+python scripts/update_version.py sync 1.2.3
+python scripts/update_version.py bump patch
+python scripts/update_version.py bump minor
+python scripts/update_version.py bump major
+python scripts/update_version.py release
+
+```
+
 ## Build metadata
 
 Build metadata is generated into `pdf3md/build_meta.json`.
