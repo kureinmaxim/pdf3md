@@ -1,10 +1,15 @@
 // src/App.jsx
 import { useState, useRef, useEffect } from 'react'
 import Sidebar from './components/Sidebar'
-import MultiFileUploadStatus from './components/MultiFileUploadStatus' // Import the new component
+import MultiFileUploadStatus from './components/MultiFileUploadStatus'
+import ProfileSelector from './components/ProfileSelector'
+import ProfileManager from './components/ProfileManager'
 import './App.css'
 import './components/LoadingStyles.css'
-import './components/MultiFileUploadStatus.css' // Import its CSS
+import './components/MultiFileUploadStatus.css'
+import './components/ProfileSelector.css'
+import './components/ProfileManager.css'
+import './components/ProfileEditor.css'
 
 function App() {
   const [markdown, setMarkdown] = useState('')
@@ -27,21 +32,23 @@ function App() {
   const [isConverting, setIsConverting] = useState(false)
   const [versionInfo, setVersionInfo] = useState(null)
   const [showAbout, setShowAbout] = useState(false)
+  const [selectedProfile, setSelectedProfile] = useState('default')
+  const [showProfileManager, setShowProfileManager] = useState(false)
   const showGitMeta = !import.meta.env.PROD
   const showBuildTime = !import.meta.env.PROD
   const fileInputRef = useRef(null)
-  const isInitialMount = useRef(true); // Ref to track initial mount
-  const activeConversionId = useRef(null); // Tracks the current conversion ID for polling
+  const isInitialMount = useRef(true);
+  const activeConversionId = useRef(null);
 
   // Check if device is mobile
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth <= 768);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    
+
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
@@ -190,15 +197,15 @@ function App() {
       try {
         const response = await fetch(`${getBackendUrl()}/progress/${conversionId}`);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        
+
         const progressData = await response.json();
 
         setLoadingProgress(progressData.progress || 0);
         setLoadingStage(progressData.stage || 'Processing...');
         setTotalPages(progressData.total_pages || 0);
         setCurrentPage(progressData.current_page || 0);
-        updateFileStatus(fileName, { 
-          progress: progressData.progress || 0, 
+        updateFileStatus(fileName, {
+          progress: progressData.progress || 0,
           stage: progressData.stage || 'Processing...',
           totalPages: progressData.total_pages || 0,
           currentPage: progressData.current_page || 0,
@@ -210,10 +217,10 @@ function App() {
           setMarkdown(progressData.result.markdown); // Display the latest markdown
           addToHistory(progressData.result);
           updateFileStatus(fileName, { status: 'Completed', markdown: progressData.result.markdown, progress: 100 });
-          
+
           // Reset for next file or finish
           setIsLoading(false); // This will trigger the useEffect to process next file in queue
-          setCurrentFile(null); 
+          setCurrentFile(null);
           // Don't reset global loading progress/stage here if queue has items
           if (uploadQueue.length === 0) {
             setLoadingProgress(0);
@@ -226,11 +233,11 @@ function App() {
           activeConversionId.current = null;
           // alert(`Conversion failed for ${fileName}: ${progressData.error}`); // Removed alert for better UX with multi-upload
           console.error(`Conversion failed for ${fileName}:`, progressData.error);
-          updateFileStatus(fileName, { 
-            status: 'Error', 
-            error: progressData.error || 'Unknown conversion error', 
-            progress: 0, 
-            stage: 'Error' 
+          updateFileStatus(fileName, {
+            status: 'Error',
+            error: progressData.error || 'Unknown conversion error',
+            progress: 0,
+            stage: 'Error'
           });
           setIsLoading(false); // Allow next file in queue to process
           setCurrentFile(null);
@@ -247,20 +254,20 @@ function App() {
         activeConversionId.current = null;
         // alert(`Error checking conversion progress for ${fileName}. Please try again.`); // Removed alert
         console.error(`Error polling progress for ${fileName}:`, error.message);
-        updateFileStatus(fileName, { 
-          status: 'Error', 
-          error: `Polling failed: ${error.message}`, 
+        updateFileStatus(fileName, {
+          status: 'Error',
+          error: `Polling failed: ${error.message}`,
           progress: 0,
-          stage: 'Error' 
+          stage: 'Error'
         });
         setIsLoading(false);
         setCurrentFile(null);
         if (uploadQueue.length === 0) {
-            setLoadingProgress(0);
-            setLoadingStage('');
-            setTotalPages(0);
-            setCurrentPage(0);
-          }
+          setLoadingProgress(0);
+          setLoadingStage('');
+          setTotalPages(0);
+          setCurrentPage(0);
+        }
       }
     }, 500);
     return pollInterval;
@@ -313,7 +320,7 @@ function App() {
       });
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      
+
       const data = await response.json();
 
       if (isPdf) {
@@ -332,10 +339,10 @@ function App() {
           setIsLoading(false);
           setCurrentFile(null);
           // Reset progress/stage/page counts if queue is empty or if it was a DOCX file
-          if (uploadQueue.length === 0 || isDocx) { 
+          if (uploadQueue.length === 0 || isDocx) {
             setLoadingProgress(0);
             setLoadingStage('');
-            setTotalPages(0); 
+            setTotalPages(0);
             setCurrentPage(0);
           }
         } else {
@@ -348,7 +355,7 @@ function App() {
       updateFileStatus(file.name, { status: 'Error', error: err.message || `Failed to start ${isPdf ? 'PDF' : 'Word'} conversion` });
       setIsLoading(false); // Allow next file in queue to process
       setCurrentFile(null);
-       if (uploadQueue.length === 0) { // Reset global progress if queue is empty
+      if (uploadQueue.length === 0) { // Reset global progress if queue is empty
         setLoadingProgress(0);
         setLoadingStage('');
         setTotalPages(0); // Ensure totalPages is reset for non-PDFs or errors
@@ -384,35 +391,35 @@ function App() {
       alert('No PDF or DOCX files selected, or all files were invalid.');
       return;
     }
-    
+
     // If there are already files being processed or in queue, add to existing, otherwise start new batch
     setFileUploadStates(prevStates => {
-        // If the previous batch is fully done, replace. Otherwise, append.
-        const isPreviousBatchDone = prevStates.every(f => f.status === 'Completed' || f.status === 'Error' || f.status === 'Skipped');
-        return isPreviousBatchDone ? newFileEntries : [...prevStates, ...newFileEntries];
+      // If the previous batch is fully done, replace. Otherwise, append.
+      const isPreviousBatchDone = prevStates.every(f => f.status === 'Completed' || f.status === 'Error' || f.status === 'Skipped');
+      return isPreviousBatchDone ? newFileEntries : [...prevStates, ...newFileEntries];
     });
     setUploadQueue(prevQueue => [...prevQueue, ...newFileEntries.map(entry => entry.originalFile)]); // Add original files to processing queue
-    
+
     // Clear main markdown display when new files are added
-    setMarkdown(''); 
+    setMarkdown('');
     setSelectedHistoryId(null);
   };
 
   const handleClearCompletedStatuses = () => {
-    setFileUploadStates([]); 
+    setFileUploadStates([]);
   };
 
   const handleRetryFile = (fileToRetry) => {
     // Find the file in the current states to get its original details if needed
     // For simplicity, we assume fileToRetry is the original file object
     // or an object that can be directly processed by processFile.
-    
+
     // Update its status to 'Queued' and add to the processing queue
     setFileUploadStates(prevStates =>
-      prevStates.map(fs => 
-        fs.name === fileToRetry.name 
-        ? { ...fs, status: 'Queued', stage: 'Queued', progress: 0, error: null } 
-        : fs
+      prevStates.map(fs =>
+        fs.name === fileToRetry.name
+          ? { ...fs, status: 'Queued', stage: 'Queued', progress: 0, error: null }
+          : fs
       )
     );
     setUploadQueue(prevQueue => [fileToRetry, ...prevQueue]); // Add to front of queue for immediate retry
@@ -473,7 +480,7 @@ function App() {
     // setLoadingStage('');
     // setTotalPages(0);
     // setCurrentPage(0);
-    
+
     // Close sidebar on mobile after selecting an item
     if (isMobile) {
       setSidebarOpen(false);
@@ -493,7 +500,7 @@ function App() {
       const newHistory = prevHistory.filter(item => item.id !== itemId)
       return newHistory
     })
-    
+
     // If the deleted item was selected, clear the selection
     if (selectedHistoryId === itemId) {
       setSelectedHistoryId(null)
@@ -510,19 +517,19 @@ function App() {
       // Create temporary textarea
       const textArea = document.createElement('textarea');
       textArea.value = markdown;
-      
+
       // Make it invisible but keep it in the document flow
       textArea.style.position = 'fixed';
       textArea.style.opacity = '0';
       document.body.appendChild(textArea);
-      
+
       // Select and copy
       textArea.select();
       document.execCommand('copy');
-      
+
       // Clean up
       document.body.removeChild(textArea);
-      
+
       // Show feedback
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
@@ -541,14 +548,15 @@ function App() {
     setIsConverting(true);
 
     try {
-        const response = await fetch(`${getBackendUrl()}/convert-markdown-to-word`, {
+      const response = await fetch(`${getBackendUrl()}/convert-markdown-to-word`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           markdown: markdownInput,
-          filename: 'markdown-document'
+          filename: 'markdown-document',
+          profile: selectedProfile  // Add selected profile to the request
         })
       });
 
@@ -558,13 +566,13 @@ function App() {
 
       // Get the blob from the response
       const blob = await response.blob();
-      
+
       // Create a download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.style.display = 'none';
       a.href = url;
-      
+
       // Get filename from response headers or use default
       const contentDisposition = response.headers.get('content-disposition');
       let filename = 'document.docx';
@@ -574,15 +582,15 @@ function App() {
           filename = filenameMatch[1];
         }
       }
-      
+
       a.download = filename;
       document.body.appendChild(a);
       a.click();
-      
+
       // Clean up
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
     } catch (err) {
       console.error('Error converting markdown to Word:', err);
       alert('Error converting markdown to Word. Please try again.');
@@ -594,292 +602,299 @@ function App() {
   return (
     <>
       <div className="app-layout">
-      {mode === 'pdf-to-md' && (
-        <Sidebar
-          isOpen={sidebarOpen}
-          history={history}
-          onSelectHistory={handleSelectHistory}
-          selectedHistoryId={selectedHistoryId}
-          onClearHistory={handleClearHistory}
-          onDeleteHistory={handleDeleteHistory}
-          onClose={() => setSidebarOpen(false)}
-        />
-      )}
-      
-      <div className={`main-content ${mode === 'pdf-to-md' && sidebarOpen ? 'with-sidebar' : ''}`}>
-        {/* Multi-file upload status modal */}
-        {fileUploadStates.length > 0 && mode === 'pdf-to-md' && (
-          <MultiFileUploadStatus
-            fileStates={fileUploadStates}
-            onClearCompleted={handleClearCompletedStatuses}
-            onRetryFile={handleRetryFile}
-            onRemoveFile={handleRemoveFileStatus}
+        {mode === 'pdf-to-md' && (
+          <Sidebar
+            isOpen={sidebarOpen}
+            history={history}
+            onSelectHistory={handleSelectHistory}
+            selectedHistoryId={selectedHistoryId}
+            onClearHistory={handleClearHistory}
+            onDeleteHistory={handleDeleteHistory}
+            onClose={() => setSidebarOpen(false)}
           />
         )}
 
-        <div className="top-bar">
-          {mode === 'pdf-to-md' && (
-            <button 
-              className="sidebar-toggle"
-              onClick={toggleSidebar}
-              title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-              </svg>
-            </button>
+        <div className={`main-content ${mode === 'pdf-to-md' && sidebarOpen ? 'with-sidebar' : ''}`}>
+          {/* Multi-file upload status modal */}
+          {fileUploadStates.length > 0 && mode === 'pdf-to-md' && (
+            <MultiFileUploadStatus
+              fileStates={fileUploadStates}
+              onClearCompleted={handleClearCompletedStatuses}
+              onRetryFile={handleRetryFile}
+              onRemoveFile={handleRemoveFileStatus}
+            />
           )}
-          <div className="app-title">
-            <h1>{mode === 'pdf-to-md' ? 'PDF to Markdown Converter' : 'Markdown to Word Converter'}</h1>
-          </div>
-          <div className="top-bar-controls">
+
+          <div className="top-bar">
             {mode === 'pdf-to-md' && (
-              <button 
-                className="file-select-btn"
-                onClick={() => fileInputRef.current?.click()} // Allow click even if loading to add to queue
-                // disabled={isLoading} // Removed: Allow adding to queue even when loading
-                title="Select PDF file"
+              <button
+                className="sidebar-toggle"
+                onClick={toggleSidebar}
+                title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                 </svg>
-                Select File
               </button>
             )}
-            <div
-              className="mode-switcher"
-              onClick={() => setMode(prevMode => prevMode === 'pdf-to-md' ? 'md-to-word' : 'pdf-to-md')}
-              title={mode === 'pdf-to-md' ? "Current mode: PDF to Markdown. Click to switch to Markdown to Word." : "Current mode: Markdown to Word. Click to switch to PDF to Markdown."}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault(); // Prevent default space scroll
-                  setMode(prevMode => prevMode === 'pdf-to-md' ? 'md-to-word' : 'pdf-to-md');
-                }
-              }}
-              style={{ cursor: 'pointer' }} // Add cursor pointer to the div
-            >
-              <div
-                className={`mode-btn ${mode === 'pdf-to-md' ? 'active' : ''}`}
-                // Removed title here as parent has comprehensive title
-              >
-                PDF → MD
-              </div>
-              <div
-                className={`mode-btn ${mode === 'md-to-word' ? 'active' : ''}`}
-                // Removed title here as parent has comprehensive title
-              >
-                MD → Word
-              </div>
+            <div className="app-title">
+              <h1>{mode === 'pdf-to-md' ? 'PDF to Markdown Converter' : 'Markdown to Word Converter'}</h1>
             </div>
-          </div>
-        </div>
-
-        <div 
-          className={`container universal-drop-zone ${isDragging ? 'dragging' : ''} ${isLoading ? 'loading' : ''}`}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave}
-        >
-          <input 
-            type="file" 
-            ref={fileInputRef}
-            onChange={handleFileInput}
-            accept=".pdf,.docx" // Accept both PDF and DOCX files
-            style={{ display: 'none' }}
-            // disabled={isLoading && uploadQueue.length > 0} // Removed: Allow adding to queue
-            multiple // Allow multiple file selection
-          />
-          
-          <div className="app-wrapper">
-            {/* Welcome message: Show if not loading, no history markdown selected, and PDF-to-MD mode */}
-            {mode === 'pdf-to-md' && !markdown && !isLoading && fileUploadStates.length === 0 && (
-              <div className="welcome-content">
-                <div className="welcome-icon">
+            <div className="top-bar-controls">
+              {mode === 'pdf-to-md' && (
+                <button
+                  className="file-select-btn"
+                  onClick={() => fileInputRef.current?.click()} // Allow click even if loading to add to queue
+                  // disabled={isLoading} // Removed: Allow adding to queue even when loading
+                  title="Select PDF file"
+                >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                   </svg>
+                  Select File
+                </button>
+              )}
+              <div
+                className="mode-switcher"
+                onClick={() => setMode(prevMode => prevMode === 'pdf-to-md' ? 'md-to-word' : 'pdf-to-md')}
+                title={mode === 'pdf-to-md' ? "Current mode: PDF to Markdown. Click to switch to Markdown to Word." : "Current mode: Markdown to Word. Click to switch to PDF to Markdown."}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault(); // Prevent default space scroll
+                    setMode(prevMode => prevMode === 'pdf-to-md' ? 'md-to-word' : 'pdf-to-md');
+                  }
+                }}
+                style={{ cursor: 'pointer' }} // Add cursor pointer to the div
+              >
+                <div
+                  className={`mode-btn ${mode === 'pdf-to-md' ? 'active' : ''}`}
+                // Removed title here as parent has comprehensive title
+                >
+                  PDF → MD
                 </div>
-                <h2>Drop your PDF or Word file anywhere to convert</h2>
-                <p>Drag and drop a PDF or Word (.docx) file anywhere on this page, or use the "Select File" button in the top right corner</p>
-              </div>
-            )}
-
-            {mode === 'md-to-word' && (
-              <div className="markdown-to-word-container">
-                <div className="markdown-input-section">
-                  <div className="input-header">
-                    <h3>Enter your Markdown content</h3>
-                    <p>Type or paste your Markdown text below and convert it to a Word document</p>
-                  </div>
-                  <textarea
-                    className="markdown-input"
-                    value={markdownInput}
-                    onChange={(e) => setMarkdownInput(e.target.value)}
-                    placeholder="# Your Markdown Here"
-                    disabled={isConverting}
-                  />
-                  <div className="input-actions">
-                    <button
-                      className={`convert-btn ${isConverting ? 'converting' : ''}`}
-                      onClick={handleMarkdownToWord}
-                      disabled={isConverting || !markdownInput.trim()}
-                    >
-                      {isConverting ? (
-                        <>
-                          <div className="spinner"></div>
-                          Converting...
-                        </>
-                      ) : (
-                        <>
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                          </svg>
-                          Download as Word
-                        </>
-                      )}
-                    </button>
-                    <button
-                      className="clear-btn"
-                      onClick={() => setMarkdownInput('')}
-                      disabled={isConverting || !markdownInput.trim()}
-                    >
-                      Clear
-                    </button>
-                  </div>
+                <div
+                  className={`mode-btn ${mode === 'md-to-word' ? 'active' : ''}`}
+                // Removed title here as parent has comprehensive title
+                >
+                  MD → Word
                 </div>
               </div>
-            )}
+            </div>
+          </div>
 
-            {/* Main loading indicator: Show if actively processing a file AND no history markdown is being viewed */}
-            {isLoading && !markdown && ( 
-              <div className="loading-content">
-                <div className="loading-visual">
-                  <div className="progress-ring">
-                    <svg className="progress-circle" viewBox="0 0 120 120">
-                      <circle
-                        className="progress-circle-bg"
-                        cx="60"
-                        cy="60"
-                        r="50"
-                        fill="none"
-                        stroke="rgba(59, 130, 246, 0.1)"
-                        strokeWidth="8"
-                      />
-                      <circle
-                        className="progress-circle-fill"
-                        cx="60"
-                        cy="60"
-                        r="50"
-                        fill="none"
-                        stroke="#3b82f6"
-                        strokeWidth="8"
-                        strokeLinecap="round"
-                        strokeDasharray={`${2 * Math.PI * 50}`}
-                        strokeDashoffset={`${2 * Math.PI * 50 * (1 - loadingProgress / 100)}`}
-                        transform="rotate(-90 60 60)"
-                      />
+          <div
+            className={`container universal-drop-zone ${isDragging ? 'dragging' : ''} ${isLoading ? 'loading' : ''}`}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+          >
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileInput}
+              accept=".pdf,.docx" // Accept both PDF and DOCX files
+              style={{ display: 'none' }}
+              // disabled={isLoading && uploadQueue.length > 0} // Removed: Allow adding to queue
+              multiple // Allow multiple file selection
+            />
+
+            <div className="app-wrapper">
+              {/* Welcome message: Show if not loading, no history markdown selected, and PDF-to-MD mode */}
+              {mode === 'pdf-to-md' && !markdown && !isLoading && fileUploadStates.length === 0 && (
+                <div className="welcome-content">
+                  <div className="welcome-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                     </svg>
-                    <div className="progress-percentage">{loadingProgress}%</div>
+                  </div>
+                  <h2>Drop your PDF or Word file anywhere to convert</h2>
+                  <p>Drag and drop a PDF or Word (.docx) file anywhere on this page, or use the "Select File" button in the top right corner</p>
+                </div>
+              )}
+
+              {mode === 'md-to-word' && (
+                <div className="markdown-to-word-container">
+                  <div className="markdown-input-section">
+                    <div className="input-header">
+                      <h3>Enter your Markdown content</h3>
+                      <p>Type or paste your Markdown text below and convert it to a Word document</p>
+                    </div>
+                    <ProfileSelector
+                      selectedProfile={selectedProfile}
+                      onProfileChange={setSelectedProfile}
+                      onManageClick={() => setShowProfileManager(true)}
+                      disabled={isConverting}
+                    />
+                    <textarea
+                      className="markdown-input"
+                      value={markdownInput}
+                      onChange={(e) => setMarkdownInput(e.target.value)}
+                      placeholder="# Your Markdown Here"
+                      disabled={isConverting}
+                    />
+                    <div className="input-actions">
+
+                      <button
+                        className={`convert-btn ${isConverting ? 'converting' : ''}`}
+                        onClick={handleMarkdownToWord}
+                        disabled={isConverting || !markdownInput.trim()}
+                      >
+                        {isConverting ? (
+                          <>
+                            <div className="spinner"></div>
+                            Converting...
+                          </>
+                        ) : (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                            </svg>
+                            Download as Word
+                          </>
+                        )}
+                      </button>
+                      <button
+                        className="clear-btn"
+                        onClick={() => setMarkdownInput('')}
+                        disabled={isConverting || !markdownInput.trim()}
+                      >
+                        Clear
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="loading-text">
-                  <p>{loadingStage || "Preparing..."}</p>
-                  {currentFile && ( 
-                    <div className="file-info">
-                      <span className="filename">📄 {currentFile.name}</span>
-                      <span className="file-size">
-                        {(currentFile.size / (1024 * 1024)).toFixed(1)} MB
-                      </span>
-                      {/* Conditional page info: only for PDFs (totalPages will be > 0 for PDFs during polling) */}
-                      {(currentFile.type.includes('pdf') || currentFile.name.toLowerCase().endsWith('.pdf')) && totalPages > 0 && (
-                        <span className="page-info">
-                          {currentPage > 0 ? `Page ${currentPage} of ${totalPages}` : `${totalPages} pages total`}
+              )}
+
+              {/* Main loading indicator: Show if actively processing a file AND no history markdown is being viewed */}
+              {isLoading && !markdown && (
+                <div className="loading-content">
+                  <div className="loading-visual">
+                    <div className="progress-ring">
+                      <svg className="progress-circle" viewBox="0 0 120 120">
+                        <circle
+                          className="progress-circle-bg"
+                          cx="60"
+                          cy="60"
+                          r="50"
+                          fill="none"
+                          stroke="rgba(59, 130, 246, 0.1)"
+                          strokeWidth="8"
+                        />
+                        <circle
+                          className="progress-circle-fill"
+                          cx="60"
+                          cy="60"
+                          r="50"
+                          fill="none"
+                          stroke="#3b82f6"
+                          strokeWidth="8"
+                          strokeLinecap="round"
+                          strokeDasharray={`${2 * Math.PI * 50}`}
+                          strokeDashoffset={`${2 * Math.PI * 50 * (1 - loadingProgress / 100)}`}
+                          transform="rotate(-90 60 60)"
+                        />
+                      </svg>
+                      <div className="progress-percentage">{loadingProgress}%</div>
+                    </div>
+                  </div>
+                  <div className="loading-text">
+                    <p>{loadingStage || "Preparing..."}</p>
+                    {currentFile && (
+                      <div className="file-info">
+                        <span className="filename">📄 {currentFile.name}</span>
+                        <span className="file-size">
+                          {(currentFile.size / (1024 * 1024)).toFixed(1)} MB
                         </span>
-                      )}
+                        {/* Conditional page info: only for PDFs (totalPages will be > 0 for PDFs during polling) */}
+                        {(currentFile.type.includes('pdf') || currentFile.name.toLowerCase().endsWith('.pdf')) && totalPages > 0 && (
+                          <span className="page-info">
+                            {currentPage > 0 ? `Page ${currentPage} of ${totalPages}` : `${totalPages} pages total`}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div className="progress-bar">
+                      <div
+                        className="progress-fill"
+                        style={{ width: `${loadingProgress}%` }}
+                      ></div>
                     </div>
-                  )}
-                  <div className="progress-bar">
-                    <div 
-                      className="progress-fill" 
-                      style={{ width: `${loadingProgress}%` }}
-                    ></div>
-                  </div>
-                   {fileUploadStates.length > 1 && (
-                    <div className="batch-info">
-                      Processing file {fileUploadStates.findIndex(f => f.name === currentFile?.name) + 1} of {fileUploadStates.length}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            {/* Display area for markdown (from history or a fresh conversion if queue is empty and not loading) */}
-            {mode === 'pdf-to-md' && markdown && (
-              // Condition to show markdown:
-              // - If isLoading is false (meaning no active file processing for the main display)
-              // - OR if isLoading is true, but we are viewing a history item (markdown is set, selectedHistoryId is set)
-              // This allows viewing history while uploads happen in the modal.
-              (!isLoading || (isLoading && selectedHistoryId)) &&
-              <div className="markdown-container">
-                <div className="markdown-header">
-                  <h3>Converted Markdown</h3>
-                  <div className="markdown-actions">
-                    <button 
-                      onClick={copyToClipboard} 
-                      className={`copy-button ${isCopied ? 'copied' : ''}`}
-                    >
-                      {isCopied ? (
-                        <>
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                          </svg>
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
-                          </svg>
-                          Copy
-                        </>
-                      )}
-                    </button>
+                    {fileUploadStates.length > 1 && (
+                      <div className="batch-info">
+                        Processing file {fileUploadStates.findIndex(f => f.name === currentFile?.name) + 1} of {fileUploadStates.length}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="markdown-content">
-                  <pre>{markdown}</pre>
+              )}
+
+              {/* Display area for markdown (from history or a fresh conversion if queue is empty and not loading) */}
+              {mode === 'pdf-to-md' && markdown && (
+                // Condition to show markdown:
+                // - If isLoading is false (meaning no active file processing for the main display)
+                // - OR if isLoading is true, but we are viewing a history item (markdown is set, selectedHistoryId is set)
+                // This allows viewing history while uploads happen in the modal.
+                (!isLoading || (isLoading && selectedHistoryId)) &&
+                <div className="markdown-container">
+                  <div className="markdown-header">
+                    <h3>Converted Markdown</h3>
+                    <div className="markdown-actions">
+                      <button
+                        onClick={copyToClipboard}
+                        className={`copy-button ${isCopied ? 'copied' : ''}`}
+                      >
+                        {isCopied ? (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+                            </svg>
+                            Copy
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="markdown-content">
+                    <pre>{markdown}</pre>
+                  </div>
                 </div>
-              </div>
+              )}
+            </div>
+            {versionInfo && (
+              <>
+                <div className="footer-actions">
+                  <button
+                    className="about-button"
+                    onClick={() => setShowAbout(true)}
+                  >
+                    About
+                  </button>
+                </div>
+                <div className="app-footer">
+                  <span>
+                    Version {versionInfo.version} • Release date {versionInfo.release_date} • Developer {versionInfo.developer}
+                    {showGitMeta && versionInfo.git_commit && (
+                      <> • Commit {versionInfo.git_commit}{versionInfo.git_dirty ? " (dirty)" : ""}</>
+                    )}
+                    {showBuildTime && versionInfo.generated_at && (
+                      <> • Built {versionInfo.generated_at}</>
+                    )}
+                  </span>
+                </div>
+              </>
             )}
           </div>
-          {versionInfo && (
-            <>
-              <div className="footer-actions">
-                <button
-                  className="about-button"
-                  onClick={() => setShowAbout(true)}
-                >
-                  About
-                </button>
-              </div>
-              <div className="app-footer">
-                <span>
-                  Version {versionInfo.version} • Release date {versionInfo.release_date} • Developer {versionInfo.developer}
-                  {showGitMeta && versionInfo.git_commit && (
-                    <> • Commit {versionInfo.git_commit}{versionInfo.git_dirty ? " (dirty)" : ""}</>
-                  )}
-                  {showBuildTime && versionInfo.generated_at && (
-                    <> • Built {versionInfo.generated_at}</>
-                  )}
-                </span>
-              </div>
-            </>
-          )}
         </div>
-      </div>
       </div>
       {showAbout && versionInfo && (
         <div className="about-overlay" onClick={() => setShowAbout(false)}>
@@ -907,8 +922,16 @@ function App() {
           </div>
         </div>
       )}
+      <ProfileManager
+        isOpen={showProfileManager}
+        onClose={() => setShowProfileManager(false)}
+        onProfilesChanged={() => {
+          // Force re-render of ProfileSelector by changing key or state
+        }}
+      />
     </>
   )
+
 }
 
 export default App
