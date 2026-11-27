@@ -10,6 +10,7 @@ Outputs:
   macos/PDF3MD.icns                    (iconutil, full-margin version)
   windows/PDF3MD.ico                   (16..256, cropped version)
   pdf3md/public/favicon.svg, favicon.ico (16/32/48), apple-touch-icon.png (180)
+  assets/dmg/background.tiff           (DMG window background, 1x + 2x)
 
 Rendering is done with headless Google Chrome (supports feDropShadow);
 set CHROME=/path/to/chrome to override. Only the Python stdlib is needed.
@@ -45,13 +46,14 @@ def find_chrome() -> str:
     sys.exit("Chrome/Chromium not found; set CHROME=/path/to/chrome")
 
 
-def render(chrome: str, svg: Path, size: int, out: Path, tmp: Path) -> None:
-    """Render svg to a transparent size x size PNG."""
-    html = tmp / f"r_{svg.stem}_{size}.html"
+def render(chrome: str, svg: Path, size: int, out: Path, tmp: Path, height: int | None = None) -> None:
+    """Render svg to a transparent PNG of size x height (square by default)."""
+    width, height = size, height or size
+    html = tmp / f"r_{svg.stem}_{width}x{height}.html"
     html.write_text(
         "<!doctype html><html><head><style>"
         "html,body{margin:0;padding:0;background:transparent;overflow:hidden}"
-        f"img{{display:block;width:{size}px;height:{size}px}}"
+        f"img{{display:block;width:{width}px;height:{height}px}}"
         f"</style></head><body><img src='{svg.as_uri()}'></body></html>",
         encoding="utf-8",
     )
@@ -66,7 +68,7 @@ def render(chrome: str, svg: Path, size: int, out: Path, tmp: Path) -> None:
             "--force-device-scale-factor=1",
             "--default-background-color=00000000",
             f"--user-data-dir={tmp / 'profile'}",
-            f"--window-size={size},{size}",
+            f"--window-size={width},{height}",
             f"--screenshot={out}",
             html.as_uri(),
         ],
@@ -75,8 +77,8 @@ def render(chrome: str, svg: Path, size: int, out: Path, tmp: Path) -> None:
         stderr=subprocess.DEVNULL,
     )
     w, h = png_size(out)
-    if (w, h) != (size, size):
-        sys.exit(f"{out}: expected {size}x{size}, got {w}x{h}")
+    if (w, h) != (width, height):
+        sys.exit(f"{out}: expected {width}x{height}, got {w}x{h}")
 
 
 def png_size(p: Path) -> tuple:
@@ -148,6 +150,22 @@ def main() -> None:
         write_ico([png(CROP_SVG, s) for s in (16, 32, 48)], public / "favicon.ico")
         shutil.copy(png(CROP_SVG, 180), public / "apple-touch-icon.png")
 
+        # DMG window background (640x400 @1x and @2x -> one HiDPI TIFF)
+        bg_svg = ROOT / "assets" / "dmg" / "background.svg"
+        if bg_svg.exists():
+            bg1, bg2 = tmp / "bg.png", tmp / "bg@2x.png"
+            render(chrome, bg_svg, 640, bg1, tmp, 400)
+            render(chrome, bg_svg, 1280, bg2, tmp, 800)
+            tiff = ROOT / "assets" / "dmg" / "background.tiff"
+            if shutil.which("tiffutil"):
+                subprocess.run(
+                    ["tiffutil", "-cathidpicheck", str(bg1), str(bg2), "-out", str(tiff)],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                )
+            else:
+                shutil.copy(bg1, ROOT / "assets" / "dmg" / "background.png")
+
     print("Icons generated:")
     for p in (
         ICON_DIR / "pdf3md-1024.png",
@@ -157,6 +175,7 @@ def main() -> None:
         public / "favicon.svg",
         public / "favicon.ico",
         public / "apple-touch-icon.png",
+        ROOT / "assets" / "dmg" / "background.tiff",
     ):
         if p.exists():
             print(f"  {p.relative_to(ROOT)}  ({p.stat().st_size} bytes)")
