@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.1 — 2026-11-27
+
+### Added
+- macOS installer: the DMG opens as a drag-to-install window (PDF3MD.app, Applications alias, background with an arrow, volume icon).
+
+### Fixed
+- `macos/stop.sh` no longer kills an unrelated process from a stale pidfile: the PID must be alive and belong to the PDF3MD server; otherwise the pidfile is removed. Falls back to the PDF3MD process on port 6201.
+- The macOS launcher writes and cleans up its pidfile and does not start a second copy when PDF3MD is already running.
+- Same safety checks in `pdf3md/stop_server.sh` and the Windows start/stop scripts.
+
 ## 1.1.0 — 2026-11-27
 
 ### Added
