@@ -117,6 +117,10 @@ PYINSTALLER_ARGS=(
   --workpath "$DIST_DIR/pyinstaller/build"
   --specpath "$DIST_DIR/pyinstaller"
   --collect-data docx
+  # pymupdf4llm >= 1.x uses pymupdf.layout (ONNX models) + onnxruntime at runtime
+  --collect-all pymupdf
+  --collect-all pymupdf4llm
+  --collect-all onnxruntime
   --hidden-import=pdf3md
   --hidden-import=pdf3md.config
   --hidden-import=pdf3md.utils

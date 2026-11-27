@@ -302,16 +302,13 @@ function App() {
 
     const formData = new FormData();
     let endpoint = '';
-    let fileKey = '';
 
     if (isPdf) {
       formData.append('pdf', file);
       endpoint = `/convert`;
-      fileKey = 'pdf';
     } else if (isDocx) {
       formData.append('document', file);
       endpoint = `/convert-word-to-markdown`;
-      fileKey = 'document';
     }
 
     try {
@@ -712,7 +709,7 @@ function App() {
                     </svg>
                   </div>
                   <h2>Drop your PDF or Word file anywhere to convert</h2>
-                  <p>Drag and drop a PDF or Word (.docx) file anywhere on this page, or use the "Select File" button in the top right corner</p>
+                  <p>Drag and drop a PDF or Word (.docx) file anywhere on this page, or use the &quot;Select File&quot; button in the top right corner</p>
                 </div>
               )}
 

@@ -17,7 +17,7 @@ export default [
         sourceType: 'module',
       },
     },
-    settings: { react: { version: '18.3' } },
+    settings: { react: { version: '19.3' } },
     plugins: {
       react,
       'react-hooks': reactHooks,
@@ -27,8 +27,13 @@ export default [
       ...js.configs.recommended.rules,
       ...react.configs.recommended.rules,
       ...react.configs['jsx-runtime'].rules,
-      ...reactHooks.configs.recommended.rules,
+      // Classic hooks rules only; the React Compiler rules added to
+      // eslint-plugin-react-hooks 7 "recommended" need a refactor first.
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
       'react/jsx-no-target-blank': 'off',
+      // React 19 no longer runs propTypes checks; the project does not use prop-types
+      'react/prop-types': 'off',
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
