@@ -1,7 +1,7 @@
 ; Inno Setup script for PDF3MD
 
 [Setup]
-#define AppVersion "1.0.3"
+#define AppVersion "1.1.0"
 AppName=PDF3MD
 AppVersion={#AppVersion}
 DefaultDirName=C:\Project\pdf3md
