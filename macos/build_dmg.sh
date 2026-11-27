@@ -35,6 +35,22 @@ hdiutil create \
     -size 200m \
     "$TEMP_DMG"
 
+# Volume icon: put .VolumeIcon.icns on the RW image and set the custom-icon flag
+echo "Setting volume icon..."
+MOUNT_DIR="$(mktemp -d /tmp/PDF3MD_mnt.XXXXXX)"
+if hdiutil attach "$TEMP_DMG" -nobrowse -noautoopen -mountpoint "$MOUNT_DIR" >/dev/null; then
+    cp "$ROOT_DIR/macos/PDF3MD.icns" "$MOUNT_DIR/.VolumeIcon.icns"
+    if command -v SetFile >/dev/null 2>&1; then
+        SetFile -c icnC "$MOUNT_DIR/.VolumeIcon.icns" || true
+        SetFile -a C "$MOUNT_DIR" || true
+    else
+        echo "   Warning: SetFile not found (install Xcode CLT); volume icon flag not set"
+    fi
+    sync
+    hdiutil detach "$MOUNT_DIR" >/dev/null || hdiutil detach "$MOUNT_DIR" -force >/dev/null
+fi
+rmdir "$MOUNT_DIR" 2>/dev/null || true
+
 echo "Compressing DMG..."
 hdiutil convert "$TEMP_DMG" -format UDZO -o "$DMG_PATH"
 rm -f "$TEMP_DMG"

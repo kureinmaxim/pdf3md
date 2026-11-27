@@ -12,14 +12,16 @@ Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=admin
+SetupIconFile=PDF3MD.ico
+UninstallDisplayIcon={app}\windows\PDF3MD.ico
 
 [Files]
 Source: "..\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs; Excludes: ".git\*;node_modules\*;venv\*;dist\*;**\__pycache__\*;**\*.pyc;.pids\*"
 
 [Icons]
-Name: "{group}\PDF3MD (Start)"; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\windows\start_app.ps1"""
+Name: "{group}\PDF3MD (Start)"; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\windows\start_app.ps1"""; IconFilename: "{app}\windows\PDF3MD.ico"
 Name: "{group}\PDF3MD (Stop)"; Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -File ""{app}\windows\stop_app.ps1"""
-Name: "{group}\PDF3MD (Open in Browser)"; Filename: "cmd.exe"; Parameters: "/c start http://localhost:6201"
+Name: "{group}\PDF3MD (Open in Browser)"; Filename: "cmd.exe"; Parameters: "/c start http://localhost:6201"; IconFilename: "{app}\windows\PDF3MD.ico"
 Name: "{group}\Uninstall PDF3MD"; Filename: "{uninstallexe}"
 
 [Run]

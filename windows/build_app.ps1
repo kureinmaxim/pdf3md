@@ -67,6 +67,7 @@ if (Test-Path $PYINSTALLER_DIR) {
 $PYINSTALLER_ARGS = @(
     "--onefile",
     "--name", "PDF3MD",
+    "--icon", (Join-Path $ROOT_DIR "windows\PDF3MD.ico"),
     "--distpath", $PYINSTALLER_DIR,
     "--workpath", (Join-Path $PYINSTALLER_DIR "build"),
     "--specpath", $PYINSTALLER_DIR,

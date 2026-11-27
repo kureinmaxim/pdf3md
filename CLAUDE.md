@@ -61,6 +61,10 @@ macos/build_dmg.sh    # → dist/PDF3MD.dmg
 
 # Windows (PowerShell)
 windows/build_app.ps1  # → .exe via PyInstaller
+
+# Icons: edit assets/icon/pdf3md.svg (+ favicon.svg), then regenerate
+# macos/PDF3MD.icns, windows/PDF3MD.ico and pdf3md/public favicons
+scripts/build_icons.sh   # needs Google Chrome (headless)
 ```
 
 ## Architecture
