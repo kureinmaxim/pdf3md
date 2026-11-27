@@ -27,10 +27,8 @@ export default [
       ...js.configs.recommended.rules,
       ...react.configs.recommended.rules,
       ...react.configs['jsx-runtime'].rules,
-      // Classic hooks rules only; the React Compiler rules added to
-      // eslint-plugin-react-hooks 7 "recommended" need a refactor first.
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
+      // Full eslint-plugin-react-hooks 7 recommended set (incl. React Compiler rules)
+      ...reactHooks.configs.recommended.rules,
       'react/jsx-no-target-blank': 'off',
       // React 19 no longer runs propTypes checks; the project does not use prop-types
       'react/prop-types': 'off',
