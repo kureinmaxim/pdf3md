@@ -15,7 +15,17 @@ stop_process() {
   if [ -f "$pid_file" ]; then
     local pid=$(cat "$pid_file")
 
-    if [ -n "$pid" ] && ps -p "$pid" > /dev/null; then
+    local cmd=""
+    if [ -n "$pid" ]; then
+      cmd=$(ps -p "$pid" -o command= 2>/dev/null)
+    fi
+
+    # Only stop the PID if it is alive AND is our Flask backend (app.py);
+    # a stale pidfile may point at an unrelated process that reused the PID.
+    if [ -n "$cmd" ] && ! echo "$cmd" | grep -Eq 'app\.py|run_server\.py'; then
+      echo "$process_name PID file points to PID $pid, which is not the backend ($cmd). Removing stale PID file."
+      rm "$pid_file"
+    elif [ -n "$pid" ] && [ -n "$cmd" ]; then
       echo "Attempting to stop $process_name (PID $pid)..."
       kill "$pid" # Send TERM
       sleep 2

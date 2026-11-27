@@ -51,9 +51,42 @@ fi
 # Update frontend files
 update_template
 
-# Run the server (it will auto-launch browser)
+PID_DIR="$APP_SUPPORT_DIR/.pids"
+PID_FILE="$PID_DIR/backend.pid"
+PORT="${PDF3MD_PORT:-6201}"
+mkdir -p "$PID_DIR"
+
+# Already running? Then just open the browser instead of starting a second copy.
+if [ -f "$PID_FILE" ]; then
+  running_pid="$(tr -dc '0-9' < "$PID_FILE")"
+  if [ -n "$running_pid" ] && kill -0 "$running_pid" 2>/dev/null \
+     && ps -p "$running_pid" -o command= 2>/dev/null | grep -q '/pdf3md-server'; then
+    echo "PDF3MD is already running (PID $running_pid)."
+    open "http://localhost:$PORT"
+    exit 0
+  fi
+  rm -f "$PID_FILE"   # stale
+fi
+
+# Run the server (it opens the browser itself)
 echo "Starting PDF3MD..."
 export PDF3MD_STATIC_DIR="$WORK_DIR"
 
-# Run server - it handles browser launch internally
-"$SERVER_BIN" >> "$LOG_DIR/backend.log" 2>&1
+"$SERVER_BIN" >> "$LOG_DIR/backend.log" 2>&1 &
+SERVER_PID=$!
+echo "$SERVER_PID" > "$PID_FILE"
+
+cleanup() {
+  if kill -0 "$SERVER_PID" 2>/dev/null; then
+    kill -TERM "$SERVER_PID" 2>/dev/null || true
+    wait "$SERVER_PID" 2>/dev/null || true
+  fi
+  # Remove the pidfile only if it still points at our server.
+  if [ -f "$PID_FILE" ] && [ "$(tr -dc '0-9' < "$PID_FILE")" = "$SERVER_PID" ]; then
+    rm -f "$PID_FILE"
+  fi
+}
+trap cleanup EXIT
+trap 'exit 143' TERM INT HUP
+
+wait "$SERVER_PID" || true
