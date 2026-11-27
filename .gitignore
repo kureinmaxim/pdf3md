@@ -124,3 +124,6 @@ pdf3md/frontend.log
 !README.md
 .gitignore
 notes.md
+
+# Frontend source helpers (not a Python build dir)
+!pdf3md/src/lib/
