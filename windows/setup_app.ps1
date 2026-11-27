@@ -1,5 +1,12 @@
 $ErrorActionPreference = "Stop"
 
+trap {
+  Write-Host ""
+  Write-Host "PDF3MD setup failed: $_" -ForegroundColor Red
+  Read-Host "Press Enter to close"
+  exit 1
+}
+
 $appRoot = (Resolve-Path "$PSScriptRoot\..").Path
 $venvDir = Join-Path $appRoot "venv"
 $pythonExe = Join-Path $venvDir "Scripts\python.exe"
