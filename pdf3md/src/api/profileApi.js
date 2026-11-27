@@ -1,6 +1,6 @@
 // Profile API client functions
 
-const getBackendUrl = () => {
+export const getBackendUrl = () => {
     const hostname = window.location.hostname;
     const protocol = window.location.protocol;
     const port = window.location.port;

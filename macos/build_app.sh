@@ -43,6 +43,10 @@ cat > "$APP_DIR/Contents/Info.plist" <<EOF
   <string>APPL</string>
   <key>CFBundleExecutable</key>
   <string>PDF3MD</string>
+  <key>CFBundleIconFile</key>
+  <string>PDF3MD</string>
+  <key>CFBundleIconName</key>
+  <string>PDF3MD</string>
   <key>LSMinimumSystemVersion</key>
   <string>10.13</string>
 </dict>
@@ -60,6 +64,9 @@ exec "$RESOURCE_DIR/launcher.sh"
 EOF
 
 chmod +x "$APP_DIR/Contents/MacOS/PDF3MD"
+
+# App icon (regenerate with scripts/build_icons.sh)
+cp "$ROOT_DIR/macos/PDF3MD.icns" "$APP_DIR/Contents/Resources/PDF3MD.icns"
 
 # Copy launcher scripts
 cp "$ROOT_DIR/macos/launcher.sh" "$APP_DIR/Contents/Resources/launcher.sh"
@@ -113,10 +120,15 @@ mkdir -p "$DIST_DIR/pyinstaller"
 PYINSTALLER_ARGS=(
   --onefile
   --name pdf3md-server
+  --icon "$ROOT_DIR/macos/PDF3MD.icns"
   --distpath "$DIST_DIR/pyinstaller"
   --workpath "$DIST_DIR/pyinstaller/build"
   --specpath "$DIST_DIR/pyinstaller"
   --collect-data docx
+  # pymupdf4llm >= 1.x uses pymupdf.layout (ONNX models) + onnxruntime at runtime
+  --collect-all pymupdf
+  --collect-all pymupdf4llm
+  --collect-all onnxruntime
   --hidden-import=pdf3md
   --hidden-import=pdf3md.config
   --hidden-import=pdf3md.utils
@@ -161,6 +173,9 @@ chmod +x "$APP_DIR/Contents/Resources/bin/pdf3md-server"
 
 # Save version
 echo "$APP_VERSION" > "$APP_DIR/Contents/Resources/.app_version"
+
+# Refresh Finder/Dock icon cache for the freshly built bundle
+touch "$APP_DIR"
 
 echo ""
 echo "✅ App built successfully at: $APP_DIR"

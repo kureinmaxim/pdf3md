@@ -29,7 +29,11 @@ PDF3MD is a powerful web application for converting PDF documents into well-stru
 - **🎯 Drag & Drop Interface** - Intuitive file uploads via drag-and-drop or traditional selection
 - **⚡ Real-time Progress** - Detailed status updates during conversion with page-by-page tracking
 - **📊 File Information** - Display filename, size, page count, and conversion timestamp
-- **💎 Modern UI** - Responsive interface designed for ease of use across all devices
+- **📃 Word to Markdown** - Convert .docx documents to Markdown
+- **💎 Modern UI** - Clean responsive interface: mode tabs, large drop zone, file cards with progress, Preview / Markdown / Split result view with copy and download
+- **🌗 Dark Theme** - Follows the system theme automatically, or pick Light / Dark manually (remembered)
+- **✍️ Live Markdown Editor** - Markdown → Word with live preview, formatting profiles and opening .md files
+- **🎨 New App Icon** - Consistent icon for macOS (.icns), Windows (.ico) and the browser favicon
 - **🖥️ Standalone Apps** - Native executables for macOS and Windows (no Python/Node required)
 
 ---
@@ -137,7 +141,7 @@ chmod +x docker-start.sh
 
 ### 💻 Option 3: Manual Setup (For Development)
 
-**Prerequisites:** Python 3.13+, Node.js 18+, Pandoc, Git
+**Prerequisites:** Python 3.13+, Node.js 20.19+ (or 22.12+, required by Vite 7), Pandoc, Git
 
 1. **Clone repository:**
    ```bash
@@ -172,18 +176,18 @@ chmod +x docker-start.sh
 
 ### PDF to Markdown Conversion
 
-1. Open the application in your browser
-2. Drag and drop PDF files or click to upload
-3. Watch real-time conversion progress with page indicators
-4. Copy the generated Markdown text
-5. Download or use the Markdown as needed
+1. Open the application in your browser and choose **PDF → Markdown** (or **Word → Markdown**)
+2. Drop files anywhere on the page, or click the drop zone / press Enter on it to browse
+3. Watch per-file progress with page indicators; several files are queued
+4. Switch between **Preview**, **Markdown** and **Split** views
+5. **Copy** the Markdown or **download** it as a `.md` file; earlier results stay in the History sidebar
 
 ### Markdown to Word Conversion
 
-1. Switch to "MD → Word" mode in the app
-2. Paste or type your Markdown content
-3. Click "Download as Word" to generate DOCX file
-4. Open in Microsoft Word or compatible applications
+1. Switch to the **Markdown → Word** tab
+2. Type or paste Markdown, or open / drop a `.md` file; the preview updates live
+3. Pick a formatting profile (manage profiles with the sliders button)
+4. Click **Download Word** to get the `.docx` file
 
 ---
 
@@ -221,6 +225,18 @@ chmod +x docker-start.sh
 - React frontend (built static files)
 - Pandoc binary (if available)
 - Auto-launch browser functionality
+
+---
+
+### App Icons
+
+All icons are generated from the master SVGs in `assets/icon/`:
+
+```bash
+scripts/build_icons.sh   # needs Google Chrome (headless) and, on macOS, iconutil
+```
+
+This writes `macos/PDF3MD.icns`, `windows/PDF3MD.ico` and the web favicons in `pdf3md/public/`.
 
 ---
 
@@ -301,9 +317,10 @@ server {
 - **python-docx** - DOCX formatting and manipulation
 
 ### Frontend
-- **React 18** - UI framework
-- **Vite 5** - Build tool and dev server
-- **TailwindCSS** - Utility-first styling (if applicable)
+- **React 19** - UI framework
+- **Vite 7** - Build tool and dev server
+- **Plain CSS with design tokens** - light/dark themes via CSS variables, no UI framework
+- **marked + DOMPurify** - Markdown preview with sanitized HTML
 
 ### Build Tools
 - **PyInstaller** - Python executable bundler
@@ -328,6 +345,8 @@ pdf3md/
 │   └── requirements.txt      # Python dependencies
 ├── pdf3md_standalone.py      # Standalone app entry point
 ├── run_server.py             # Development server runner
+├── assets/icon/              # Master icon SVGs (pdf3md.svg, favicon.svg)
+├── scripts/                  # build_icons.sh, update_version.py, build_meta.py
 ├── macos/                    # macOS build scripts
 │   ├── build_app.sh         # Build .app bundle
 │   ├── build_dmg.sh         # Create DMG installer

@@ -124,3 +124,12 @@ pdf3md/frontend.log
 !README.md
 .gitignore
 notes.md
+
+# Frontend source helpers (not a Python build dir)
+!pdf3md/src/lib/
+
+# Tool caches
+.ruff_cache/
+
+# Generated at build time by scripts/build_meta.py
+pdf3md/build_meta.json

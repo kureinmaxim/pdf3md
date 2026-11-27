@@ -48,10 +48,6 @@ def apply_docx_formatting(docx_path: str, profile: Optional[Dict[str, Any]] = No
         pass
     remove_shape_lines(doc)
     try:
-        add_profile_debug_header(doc, profile)
-    except FileNotFoundError:
-        pass
-    try:
         add_page_numbers(doc, profile)
     except FileNotFoundError:
         pass
@@ -229,66 +225,6 @@ def add_page_numbers(doc, profile: Dict[str, Any]):
                     paragraph.add_run(part)
         else:
             append_field(paragraph, "PAGE")
-
-
-def add_profile_debug_header(doc, profile: Dict[str, Any]):
-    """Write active profile info into the header for debugging."""
-    page = profile.get("page", {})
-    fonts = profile.get("fonts", {})
-    headings = profile.get("headings", {})
-    tables = profile.get("tables", {})
-    paragraph = profile.get("paragraph", {})
-    page_numbers = profile.get("page_numbers", {})
-
-    header_text = (
-        "PROFILE DEBUG: {name} | Page: {w}x{h}in "
-        "Margins: T{mt} B{mb} L{ml} R{mr}in | "
-        "Body: {body_font} {body_size}pt | "
-        "H1: {h1_size}pt {h1_font} | "
-        "Tables: min {minw}in max {maxw}in | "
-        "Paragraph: line {line} before {before}pt after {after}pt | "
-        "PageNumbers: {pn_enabled} {pn_pos} {pn_fmt}"
-    ).format(
-        name=profile.get("name", "default"),
-        w=_coerce_float(page.get("width", 8.5), 8.5, minimum=0),
-        h=_coerce_float(page.get("height", 11), 11, minimum=0),
-        mt=_coerce_float(page.get("top_margin", 0.3), 0.3, minimum=0),
-        mb=_coerce_float(page.get("bottom_margin", 0.3), 0.3, minimum=0),
-        ml=_coerce_float(page.get("left_margin", 0.79), 0.79, minimum=0),
-        mr=_coerce_float(page.get("right_margin", 0.33), 0.33, minimum=0),
-        body_font=fonts.get("body", {}).get("name", "Calibri"),
-        body_size=_coerce_float(fonts.get("body", {}).get("size", 11), 11, minimum=1),
-        h1_size=_coerce_float(headings.get("h1_size", 14), 14, minimum=1),
-        h1_font=fonts.get("heading1", {}).get("name", "Calibri"),
-        minw=_coerce_float(tables.get("min_col_width", 0.35), 0.35, minimum=0.1),
-        maxw=_coerce_float(tables.get("max_col_width", 3.0), 3.0, minimum=0.1),
-        line=_coerce_float(paragraph.get("line_spacing", 1.0), 1.0, minimum=0.1),
-        before=_coerce_float(paragraph.get("space_before", 0), 0, minimum=0),
-        after=_coerce_float(paragraph.get("space_after", 0), 0, minimum=0),
-        pn_enabled=page_numbers.get("enabled", True),
-        pn_pos=page_numbers.get("position", "footer_right"),
-        pn_fmt=page_numbers.get("format", "PAGE"),
-    )
-
-    # Insert at top of document body for visibility
-    if doc.paragraphs:
-        first_para = doc.paragraphs[0]
-        debug_para = first_para.insert_paragraph_before(header_text)
-    else:
-        debug_para = doc.add_paragraph(header_text)
-    for run in debug_para.runs:
-        run.font.size = Pt(8)
-
-    # Also write to header (best effort)
-    for section in doc.sections:
-        try:
-            header = section.header
-        except FileNotFoundError:
-            continue
-        paragraph = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
-        paragraph.text = header_text
-        for run in paragraph.runs:
-            run.font.size = Pt(8)
 
 
 def apply_heading_sizes(doc, profile: Dict[str, Any]):

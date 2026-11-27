@@ -1,5 +1,7 @@
 // ProfileEditor component - form for editing profile settings
 import { useState } from 'react';
+import { Icon } from './Icons';
+import { toast } from './Toaster';
 import './ProfileEditor.css';
 
 function ProfileEditor({ profile, onSave, onCancel }) {
@@ -56,7 +58,7 @@ function ProfileEditor({ profile, onSave, onCancel }) {
 
     const handleSave = async () => {
         if (!formData.name?.trim()) {
-            alert('Profile name is required');
+            toast('Profile name is required', 'error');
             return;
         }
         setSaving(true);
@@ -68,20 +70,21 @@ function ProfileEditor({ profile, onSave, onCancel }) {
     };
 
     const tabs = [
-        { id: 'page', label: 'Page Setup', icon: '📄' },
-        { id: 'fonts', label: 'Fonts', icon: '🔤' },
-        { id: 'headings', label: 'Headings', icon: '📰' },
-        { id: 'paragraph', label: 'Paragraph', icon: '✍️' },
-        { id: 'tables', label: 'Tables', icon: '📊' },
-        { id: 'pageNumbers', label: 'Page Numbers', icon: '#️⃣' },
+        { id: 'page', label: 'Page' },
+        { id: 'fonts', label: 'Fonts' },
+        { id: 'headings', label: 'Headings' },
+        { id: 'paragraph', label: 'Paragraph' },
+        { id: 'tables', label: 'Tables' },
+        { id: 'pageNumbers', label: 'Page numbers' },
     ];
 
     return (
-        <div className="profile-editor-overlay">
-            <div className="profile-editor-modal">
-                <div className="pe-header">
-                    <h2>{profile.name === 'New Profile' ? 'Create Profile' : `Edit: ${profile.name}`}</h2>
-                    <button className="pe-close-btn" onClick={onCancel}>×</button>
+        <div className="modal-overlay">
+            <div className="modal profile-editor-modal" role="dialog" aria-modal="true" aria-labelledby="pe-title"
+                onKeyDown={(e) => { if (e.key === 'Escape' && !saving) onCancel(); }}>
+                <div className="modal-header pe-header">
+                    <h2 id="pe-title">{profile.name === 'New Profile' ? 'New profile' : `Edit profile: ${profile.name}`}</h2>
+                    <button type="button" className="icon-btn sm" onClick={onCancel} aria-label="Close"><Icon name="x" /></button>
                 </div>
 
                 <div className="pe-info">
@@ -105,15 +108,17 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                     </div>
                 </div>
 
-                <div className="pe-tabs">
+                <div className="pe-tabs" role="tablist" aria-label="Profile sections">
                     {tabs.map(tab => (
                         <button
                             key={tab.id}
+                            type="button"
+                            role="tab"
+                            aria-selected={activeTab === tab.id}
                             className={`pe-tab ${activeTab === tab.id ? 'active' : ''}`}
                             onClick={() => setActiveTab(tab.id)}
                         >
-                            <span className="tab-icon">{tab.icon}</span>
-                            <span className="tab-label">{tab.label}</span>
+                            {tab.label}
                         </button>
                     ))}
                 </div>
@@ -654,12 +659,12 @@ function ProfileEditor({ profile, onSave, onCancel }) {
                     )}
                 </div>
 
-                <div className="pe-footer">
-                    <button className="pe-cancel-btn" onClick={onCancel} disabled={saving}>
+                <div className="modal-footer pe-footer">
+                    <button type="button" className="btn" onClick={onCancel} disabled={saving}>
                         Cancel
                     </button>
-                    <button className="pe-save-btn" onClick={handleSave} disabled={saving}>
-                        {saving ? 'Saving...' : 'Save Profile'}
+                    <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                        {saving ? 'Saving…' : 'Save profile'}
                     </button>
                 </div>
             </div>

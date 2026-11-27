@@ -1,0 +1,178 @@
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fl-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 30px;
+}
+
+.fl-header h2 {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.fl-count {
+  margin-left: 6px;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.fl-items {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.file-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  animation: pop-in 200ms var(--ease);
+}
+
+.file-card.status-error {
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
+}
+
+.fc-badge {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 48px;
+  flex: none;
+  border-radius: 8px;
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  color: #fff;
+  background: linear-gradient(160deg, #ef4444, #b91c1c);
+}
+
+.fc-badge.kind-docx {
+  background: linear-gradient(160deg, #3b82f6, #1d4ed8);
+}
+
+.fc-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.fc-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fc-size,
+.fc-pages,
+.fc-pct {
+  flex: none;
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fc-status-row {
+  font-size: 13px;
+}
+
+.fc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  color: var(--text-2);
+}
+
+.fc-status-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fc-status svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.fc-status .spinner {
+  width: 13px;
+  height: 13px;
+  color: var(--accent);
+}
+
+.fc-status.completed {
+  color: var(--success);
+}
+
+.fc-status.error {
+  color: var(--danger);
+}
+
+.fc-status.skipped {
+  color: var(--warning);
+}
+
+.fc-progress {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+
+.fc-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--brand-gradient);
+  transition: width 300ms var(--ease);
+}
+
+.fc-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+@media (max-width: 520px) {
+  .file-card {
+    flex-wrap: wrap;
+  }
+
+  .fc-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .fc-pages {
+    display: none;
+  }
+}
